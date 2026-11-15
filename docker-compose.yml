@@ -1,0 +1,16 @@
+services:
+  updater:
+    build: .
+    container_name: sc-updater
+    restart: unless-stopped
+    environment:
+      TZ: Europe/Berlin
+      DB_PATH: /data/starcitizen.db
+      EXPORT_PATH: /data/Star_Citizen_Schiffspreise.xlsx
+      WEB_PATH: /web-out/SC_Schiffspreise.html
+      UPDATE_INTERVAL_HOURS: "24"   # Aktualisierung alle 24 Stunden
+      VAT_RATE: "0.19"              # nur beim allerersten Start; danach in der Tabelle "settings" aenderbar
+    volumes:
+      - ./data:/data
+      # Nur dieser Ordner wird beschrieben (dort liegt die erzeugte Seite):
+      - /volume1/web/gaming/starcitizen:/web-out
