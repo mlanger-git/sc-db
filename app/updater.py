@@ -188,6 +188,8 @@ def init_db(con):
         for col in ("category", "subcategory", "size_label"):
             if col not in cols:
                 con.execute(f"ALTER TABLE vehicles ADD COLUMN {col} TEXT")
+        if "cargo_scu" not in cols:
+            con.execute("ALTER TABLE vehicles ADD COLUMN cargo_scu REAL")
         con.commit()
     mcols = {r[1] for r in con.execute("PRAGMA table_info(manual_ships)")}
     if mcols:
@@ -276,6 +278,10 @@ def update_vehicles(con):
             if not cat and m.get("name") in ROLE_OVERRIDES:
                 cat, sub = ROLE_OVERRIDES[m["name"]]
             size = size_label(m)
+            try:
+                scu = float(m.get("cargo_capacity")) if m.get("cargo_capacity") is not None else None
+            except (TypeError, ValueError):
+                scu = None
             msrp = m.get("msrp")
             msrp = float(msrp) if msrp not in (None, "", 0) else None
             old = con.execute("SELECT msrp_usd FROM vehicles WHERE slug=?", (slug,)).fetchone()
@@ -284,16 +290,17 @@ def update_vehicles(con):
                             (m.get("name"), old["msrp_usd"], msrp, ts))
             con.execute(
                 """INSERT INTO vehicles(slug,name,manufacturer,manufacturer_code,is_spaceship,status,career,
-                                        foci,role,details,msrp_usd,updated_at,category,subcategory,size_label)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                                        foci,role,details,msrp_usd,updated_at,category,subcategory,size_label,cargo_scu)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                    ON CONFLICT(slug) DO UPDATE SET name=excluded.name, manufacturer=excluded.manufacturer,
                      manufacturer_code=excluded.manufacturer_code, is_spaceship=excluded.is_spaceship,
                      status=excluded.status, career=excluded.career, foci=excluded.foci, role=excluded.role,
                      details=excluded.details, msrp_usd=excluded.msrp_usd, updated_at=excluded.updated_at,
-                     category=excluded.category, subcategory=excluded.subcategory, size_label=excluded.size_label""",
+                     category=excluded.category, subcategory=excluded.subcategory, size_label=excluded.size_label,
+                     cargo_scu=excluded.cargo_scu""",
                 (slug, m.get("name"), man.get("name"), man.get("code"),
                  1 if m.get("is_spaceship") else 0, status, loc(m.get("type")) or m.get("career"),
-                 foci, role, details, msrp, ts, cat, sub, size))
+                 foci, role, details, msrp, ts, cat, sub, size, scu))
             count += 1
         page += 1
     con.commit()
@@ -406,7 +413,7 @@ def export_xlsx(con=None):
     con = con or connect()
     cur = con.execute("SELECT * FROM ship_prices ORDER BY lower(hersteller), lower(schiff)")
     cols = [d[0] for d in cur.description]
-    titles = {"hersteller": "Hersteller", "kuerzel": "Kürzel", "konzept": "Konzept (1=ja)", "schiff": "Schiff", "typ": "Typ", "rolle": "Rolle", "subkategorie": "Sub-Kategorie", "groesse": "Größe",
+    titles = {"hersteller": "Hersteller", "kuerzel": "Kürzel", "konzept": "Konzept (1=ja)", "schiff": "Schiff", "typ": "Typ", "rolle": "Rolle", "subkategorie": "Sub-Kategorie", "groesse": "Größe", "scu": "SCU",
               "status": "Status", "ingame_kaufbar": "Ingame kaufbar?",
               "preis_auec": "Ingame-Preis (aUEC)", "preis_usd": "Echtgeld (USD)",
               "preis_eur_inkl_mwst": "Echtgeld (EUR, inkl. MwSt.)", "auec_pro_eur": "aUEC pro EUR",

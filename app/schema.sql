@@ -27,7 +27,8 @@ CREATE TABLE IF NOT EXISTS vehicles (
     updated_at        TEXT,
     category          TEXT,
     subcategory       TEXT,
-    size_label        TEXT
+    size_label        TEXT,
+    cargo_scu         REAL
 );
 CREATE INDEX IF NOT EXISTS idx_vehicles_name ON vehicles(name);
 
@@ -105,6 +106,7 @@ SELECT COALESCE(m.name, r.manufacturer)                                   AS her
        r.category                                                         AS rolle,
        r.subcategory                                                      AS subkategorie,
        r.size_label                                                       AS groesse,
+       r.cargo_scu                                                        AS scu,
        r.status                                                           AS status,
        CASE WHEN r.status = 'Im Konzept' AND r.i_name IS NULL THEN 1 ELSE 0 END AS konzept,
        CASE WHEN r.i_name IS NULL THEN 'Nein' ELSE 'Ja' END               AS ingame_kaufbar,
@@ -120,7 +122,7 @@ LEFT JOIN manufacturers m ON m.code = COALESCE(r.i_code, r.manufacturer_code)
 WHERE r.rn = 1
 UNION ALL
 -- Schiffe nur aus der manuellen Liste (nicht in der API)
-SELECT COALESCE(m.name, ms.code), ms.code, ms.name, 'Schiff', ms.category, ms.subcategory, ms.size_label,
+SELECT COALESCE(m.name, ms.code), ms.code, ms.name, 'Schiff', ms.category, ms.subcategory, ms.size_label, NULL,
        'Nicht geprüft', 1, 'Nein', NULL, ms.msrp_usd,
        ROUND(ms.msrp_usd / fxr.rate * (1 + fxr.vat), 2), NULL, NULL, ms.note
 FROM manual_ships ms CROSS JOIN fxr
@@ -128,7 +130,7 @@ LEFT JOIN manufacturers m ON m.code = ms.code
 WHERE NOT EXISTS (SELECT 1 FROM vehicles v WHERE v.name = ms.name)
 UNION ALL
 -- Eintraege der Wiki-Tabelle ohne Zuordnung zur API
-SELECT COALESCE(m.name, i.manufacturer_code), i.manufacturer_code, i.wiki_name, NULL, NULL, NULL, NULL,
+SELECT COALESCE(m.name, i.manufacturer_code), i.manufacturer_code, i.wiki_name, NULL, NULL, NULL, NULL, NULL,
        NULL, 0, 'Ja', i.price_auec, NULL, NULL, NULL, i.shops, 'Keine Zuordnung zur API'
 FROM ingame i
 LEFT JOIN manufacturers m ON m.code = i.manufacturer_code
