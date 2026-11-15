@@ -64,7 +64,7 @@ Grau hinterlegt: Schiff noch im Konzept bzw. Status nicht geprüft (nicht in der
 const DATA = __DATA__;
 const SHOPS = [["Astro Armada","Astro Armada (Area18)"],["Crusader Showroom","Crusader Showroom (Orison)"],["New Deal","New Deal (Lorville)"],["Teach's","Teach's (Levski)"],["Buy & Fly","Buy & Fly (Ruin Station)"]];
 DATA.forEach(r=>{const h=(r.haendler||'').split(', ');SHOPS.forEach(([k],i)=>{r['shop'+i]=h.includes(k)?'x':'';});});
-const COLS = [["hersteller","Hersteller"],["kuerzel","Kürzel"],["schiff","Name"],["preis_auec","Ingame-Preis (aUEC)","n"],["preis_usd","Echtgeld","n"],
+const COLS = [["hersteller","Hersteller"],["schiff","Name"],["preis_auec","Ingame-Preis (aUEC)","n"],["preis_usd","Echtgeld","n"],
   ["preis_eur_inkl_mwst","Echtgeld (inkl. MwSt.)","n"],["auec_pro_eur","aUEC pro EUR","n"],
   ...SHOPS.map((s,i)=>["shop"+i,s[1],"c shop"]),
   ["ingame_kaufbar","Ingame kaufbar?","c"],["status","Status"],["typ","Typ"],["kategorie","Kategorie"],["subkategorie","Sub-Kategorie"],["groesse","Größe"],["anmerkung","Anmerkung"]];
