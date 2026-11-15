@@ -115,6 +115,8 @@ MANUAL_SHIPS = [
 ]
 REMOVED_MANUAL = ["Endeavor Olympic"]  # gibt es nicht
 # API-Schiffe ohne career/role: Name -> (Rolle, Sub-Kategorie)
+# Schiffe, die laut Spiel schon fliegbar sind, in der API aber noch als Konzept stehen
+FLIGHT_READY = {"Liberator"}
 ROLE_OVERRIDES = {"Pitbull": ("Combat", ""), "Paladin": ("Combat", "Gunship")}
 
 
@@ -274,6 +276,8 @@ def update_vehicles(con):
             role, details = RMAP.get(foci, (foci, ""))
             status = m.get("production_status")
             status = loc(status) if isinstance(status, dict) else status
+            if m.get("name") in FLIGHT_READY:
+                status = "Flugbereit"
             cat, sub = categorize(m.get("career"), m.get("role"), bool(m.get("is_vehicle") or m.get("is_gravlev")))
             if not cat and m.get("name") in ROLE_OVERRIDES:
                 cat, sub = ROLE_OVERRIDES[m["name"]]

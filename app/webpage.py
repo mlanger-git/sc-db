@@ -49,7 +49,6 @@ PAGE = r'''<!DOCTYPE html>
 <div class="panel">
   <div><label>Suche</label><input type="text" id="q" placeholder="Schiff oder Hersteller"></div>
   <div><label>Hersteller</label><select id="fh"><option value="">Alle</option></select></div>
-  <div><label>Typ</label><select id="ft"><option value="">Alle</option></select></div>
   <div><label>Rolle</label><select id="fk"><option value="">Alle</option></select></div>
   <div><label>Sub-Kategorie</label><select id="fr"><option value="">Alle</option></select></div>
   <div><label>Größe</label><select id="fg"><option value="">Alle</option></select></div>
@@ -73,7 +72,7 @@ DATA.forEach(r=>{const h=(r.haendler||'').split(', ');SHOPS.forEach(([k],i)=>{r[
 const COLS = [["hersteller","Hersteller"],["schiff","Name"],["besitz","Besitze ich","own"],["wunsch","Wunschliste","w"],["preis_auec","Ingame-Preis (aUEC)","n"],["preis_usd","Echtgeld","n"],
   ["preis_eur_inkl_mwst","Echtgeld (inkl. MwSt.)","n"],["auec_pro_eur","aUEC pro EUR","n"],
   ...SHOPS.map((s,i)=>["shop"+i,s[1],"c shop"]),
-  ["ingame_kaufbar","Ingame kaufbar?","c"],["status","Status"],["typ","Typ"],["rolle","Rolle"],["subkategorie","Sub-Kategorie"],["groesse","Größe"],["scu","SCU","n"],["anmerkung","Anmerkung"]];
+  ["ingame_kaufbar","Ingame kaufbar?","c"],["status","Status"],["rolle","Rolle"],["subkategorie","Sub-Kategorie"],["groesse","Größe"],["scu","SCU","n"],["anmerkung","Anmerkung"]];
 const LS='sc_state_v1';let serverOk=true;
 function applyState(st){DATA.forEach(r=>{const s=st[r.schiff]||{};r.besitz=s.besitz||'';r.wunsch=s.wunsch?1:'';});}
 function note(){$('sv').textContent=serverOk?'':'Speichern auf der NAS nicht möglich – Eintrag nur in diesem Browser';}
@@ -88,16 +87,16 @@ function saveRow(r){
 let sortKey="hersteller", desc=false;
 const $=id=>document.getElementById(id);
 function fill(sel,key){[...new Set(DATA.map(r=>r[key]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'de')).forEach(v=>{const o=document.createElement('option');o.value=o.textContent=v;$(sel).appendChild(o);});}
-fill('fh','hersteller');SHOPS.forEach(([k])=>{const o=document.createElement('option');o.value=o.textContent=k;$('fs').appendChild(o);});fill('ft','typ');fill('fk','rolle');fill('fr','subkategorie');fill('fg','groesse');
+fill('fh','hersteller');SHOPS.forEach(([k])=>{const o=document.createElement('option');o.value=o.textContent=k;$('fs').appendChild(o);});fill('fk','rolle');fill('fr','subkategorie');fill('fg','groesse');
 $('head').innerHTML=COLS.map(c=>`<th data-k="${c[0]}" class="${(c[2]||'').replace(/\b[nc]\b/,'').trim()}">${c[1]}</th>`).join('');
 $('head').onclick=e=>{const k=e.target.dataset.k;if(!k)return;desc=(sortKey===k)?!desc:false;sortKey=k;render();};
-['q','fh','ft','fk','fr','fg','fs','fz','fi','fb','fw'].forEach(i=>$(i).addEventListener('input',render));
+['q','fh','fk','fr','fg','fs','fz','fi','fb','fw'].forEach(i=>$(i).addEventListener('input',render));
 $('fv').addEventListener('input',()=>$('tbl').classList.toggle('hide-shops',!$('fv').checked));
 const fmt=(v,k)=>{if(v==null||v==='')return '';if(typeof v==='number'){const d=(k==='preis_eur_inkl_mwst'||k==='preis_usd')?2:0;let s=v.toLocaleString('de-DE',{minimumFractionDigits:d,maximumFractionDigits:k==='scu'?2:d});if(k==='preis_usd')s+=' $';if(k==='preis_eur_inkl_mwst')s+=' €';return s;}return String(v).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));};
 function render(){
   const q=$('q').value.toLowerCase();
   let rows=DATA.filter(r=>(!q||(r.schiff+' '+r.hersteller).toLowerCase().includes(q))&&(!$('fh').value||r.hersteller===$('fh').value)
-    &&(!$('ft').value||r.typ===$('ft').value)&&(!$('fk').value||r.rolle===$('fk').value)&&(!$('fr').value||r.subkategorie===$('fr').value)&&(!$('fg').value||r.groesse===$('fg').value)
+    &&(!$('fk').value||r.rolle===$('fk').value)&&(!$('fr').value||r.subkategorie===$('fr').value)&&(!$('fg').value||r.groesse===$('fg').value)
     &&(!$('fs').value||(r.haendler||'').split(', ').includes($('fs').value))
     &&(!$('fz').value||($('fz').value==='k')===!!r.konzept)
     &&(!$('fb').value||($('fb').value==='any'?!!r.besitz:$('fb').value==='none'?!r.besitz:r.besitz===$('fb').value))
