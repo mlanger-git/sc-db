@@ -71,7 +71,10 @@ CREATE TABLE IF NOT EXISTS manual_ships (
     name     TEXT PRIMARY KEY,
     code     TEXT,
     msrp_usd REAL,
-    note     TEXT
+    note     TEXT,
+    category    TEXT,
+    subcategory TEXT,
+    size_label  TEXT
 );
 
 -- Fertige Sicht, entspricht der Excel-Liste
@@ -99,7 +102,7 @@ SELECT COALESCE(m.name, r.manufacturer)                                   AS her
        COALESCE(r.i_code, r.manufacturer_code)                            AS kuerzel,
        COALESCE(r.i_name, r.name)                                         AS schiff,
        CASE WHEN r.is_spaceship = 0 THEN 'Fahrzeug' ELSE 'Schiff' END     AS typ,
-       r.category                                                         AS kategorie,
+       r.category                                                         AS rolle,
        r.subcategory                                                      AS subkategorie,
        r.size_label                                                       AS groesse,
        r.status                                                           AS status,
@@ -117,7 +120,7 @@ LEFT JOIN manufacturers m ON m.code = COALESCE(r.i_code, r.manufacturer_code)
 WHERE r.rn = 1
 UNION ALL
 -- Schiffe nur aus der manuellen Liste (nicht in der API)
-SELECT COALESCE(m.name, ms.code), ms.code, ms.name, 'Schiff', NULL, NULL, NULL,
+SELECT COALESCE(m.name, ms.code), ms.code, ms.name, 'Schiff', ms.category, ms.subcategory, ms.size_label,
        'Nicht geprüft', 1, 'Nein', NULL, ms.msrp_usd,
        ROUND(ms.msrp_usd / fxr.rate * (1 + fxr.vat), 2), NULL, NULL, ms.note
 FROM manual_ships ms CROSS JOIN fxr

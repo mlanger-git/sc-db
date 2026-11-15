@@ -94,13 +94,28 @@ MANUFACTURERS = {"AEGS": "Aegis", "ANVL": "Anvil", "XNAA": "Aopoa", "ARGO": "Arg
 # Schiffe, die die API nicht kennt (USD-Preise aus aelteren Listen; wirken nur, solange die API sie nicht liefert)
 NOTE_OLD = "Status: nicht geprüft; USD-Preis laut Fandom-Wiki (evtl. veraltet)"
 MANUAL_SHIPS = [
-    ("Idris-K", "AEGS", 300), ("Legionnaire", "AEGS", 120), ("Nautilus", "AEGS", 725), ("Vulcan", "AEGS", 200),
-    ("Crucible", "ANVL", 350), ("Merchantman", "BANU", 650), ("Pioneer", "CNOU", 850),
-    ("Genesis Starliner", "CRUS", 400), ("Kraken", "DRAK", 1650), ("Kraken Privateer", "DRAK", 2000),
-    ("Endeavor", "MISC", 350), ("Endeavor Discovery", "MISC", 425), ("Endeavor Hope", "MISC", 450),
-    ("Endeavor Olympic", "MISC", 500), ("Hull D", "MISC", 450), ("Hull E", "MISC", 750),
-    ("Odyssey", "MISC", 700), ("Orion", "RSI", 575),
+    # (Name, Hersteller-Kuerzel, USD, Rolle, Sub-Kategorie, Groesse)
+    ("Idris-K", "AEGS", 300, "Combat", "Frigate", "Capital"),
+    ("Legionnaire", "AEGS", 120, "Combat", "Dropship", "Medium"),
+    ("Nautilus", "AEGS", 725, "Combat", "Minelayer", "Large"),
+    ("Vulcan", "AEGS", 200, "Support", "Repair, Refuel, Rearm", "Medium"),
+    ("Crucible", "ANVL", 350, "Support", "Repair", "Large"),
+    ("Merchantman", "BANU", 650, "Transport", "Heavy Freight", "Large"),
+    ("Pioneer", "CNOU", 850, "Industrial", "Construction", "Large"),
+    ("Genesis Starliner", "CRUS", 400, "Transport", "Passenger", "Large"),
+    ("Kraken", "DRAK", 1650, "Multi-role", "Carrier", "Capital"),
+    ("Kraken Privateer", "DRAK", 2000, "Multi-role", "Carrier", "Capital"),
+    ("Endeavor", "MISC", 350, "Multi-role", "Modular", "Capital"),
+    ("Endeavor Discovery", "MISC", 425, "Exploration", "Science", "Capital"),
+    ("Endeavor Hope", "MISC", 450, "Support", "Medical", "Capital"),
+    ("Hull D", "MISC", 450, "Transport", "Heavy Freight", "Capital"),
+    ("Hull E", "MISC", 750, "Transport", "Heavy Freight", "Capital"),
+    ("Odyssey", "MISC", 700, "Exploration", "Expedition", "Large"),
+    ("Orion", "RSI", 575, "Industrial", "Capital Mining", "Capital"),
 ]
+REMOVED_MANUAL = ["Endeavor Olympic"]  # gibt es nicht
+# API-Schiffe ohne career/role: Name -> (Rolle, Sub-Kategorie)
+ROLE_OVERRIDES = {"Pitbull": ("Combat", ""), "Paladin": ("Combat", "Gunship")}
 
 
 def en(x):
@@ -109,8 +124,15 @@ def en(x):
     return x or ""
 
 
-def categorize(career, role):
-    """Kategorie und Sub-Kategorie (englisch) aus den englischen API-Feldern career und role."""
+ROLES = {"combat": "Combat", "destroyer": "Combat", "transporter": "Transport", "transport": "Transport",
+         "exploration": "Exploration", "industrial": "Industrial", "support": "Support",
+         "competition": "Competition", "racing": "Competition", "ground": "Ground",
+         "multi-role": "Multi-role", "multirole": "Multi-role", "generalist": "Multi-role"}
+
+
+def categorize(career, role, ground=False):
+    """Rolle (offizielle RSI-Liste: Combat, Transport, Exploration, Industrial, Support, Competition,
+    Ground, Multi-role) und Sub-Kategorie aus den englischen API-Feldern career und role."""
     c = (career or "").strip().lower()
     r = (role or "").strip()
     rl = r.lower()
@@ -118,30 +140,24 @@ def categorize(career, role):
     def has(*words):
         return any(w in rl for w in words)
 
-    if has("racing") or c == "competition":
-        cat = "Racing"
-    elif has("medical"):
-        cat = "Medical"
-    elif has("refuel"):
-        cat = "Refueling"
-    elif has("salvage", "recovery"):
-        cat = "Salvaging"
-    elif has("mining"):
-        cat = "Mining"
-    elif has("data"):
-        cat = "Data-Runner"
-    elif c in ("multi-role", "generalist"):
-        cat = "Multi-Role"
-    elif c == "exploration" or has("pathfinder", "expedition", "science", "touring", "reporting"):
+    if ground or c == "ground":
+        cat = "Ground"
+    elif has("racing") or c == "competition":
+        cat = "Competition"
+    elif has("medical", "refuel"):
+        cat = "Support"
+    elif has("salvage", "recovery", "mining"):
+        cat = "Industrial"
+    elif has("pathfinder", "expedition", "science", "touring", "reporting"):
         cat = "Exploration"
-    elif c in ("transporter", "transport", "starter") or has("freight", "carrier", "passenger", "cargo"):
+    elif c in ROLES:
+        cat = ROLES[c]
+    elif c == "starter" or has("freight", "carrier", "passenger", "cargo", "data"):
         cat = "Transport"
-    elif c in ("combat", "destroyer", "ground"):
-        cat = "Fight"
     else:
         cat = ""
     sub = r.replace(" / ", ", ")
-    if sub.lower() in (cat.lower(), "generalist", "transport", "combat"):
+    if sub.lower() in (cat.lower(), "generalist", "transport", "combat", "support", "industrial", "ground"):
         sub = ""
     return cat, sub
 
@@ -173,13 +189,24 @@ def init_db(con):
             if col not in cols:
                 con.execute(f"ALTER TABLE vehicles ADD COLUMN {col} TEXT")
         con.commit()
+    mcols = {r[1] for r in con.execute("PRAGMA table_info(manual_ships)")}
+    if mcols:
+        for col in ("category", "subcategory", "size_label"):
+            if col not in mcols:
+                con.execute(f"ALTER TABLE manual_ships ADD COLUMN {col} TEXT")
+        con.commit()
     schema = os.path.join(os.path.dirname(os.path.abspath(__file__)), "schema.sql")
     with open(schema, encoding="utf-8") as f:
         con.executescript(f.read())
     con.execute("INSERT OR IGNORE INTO settings(key, value) VALUES ('vat_rate', ?)", (DEFAULT_VAT,))
     con.executemany("INSERT OR REPLACE INTO manufacturers(code, name) VALUES (?,?)", MANUFACTURERS.items())
-    con.executemany("INSERT OR IGNORE INTO manual_ships(name, code, msrp_usd, note) VALUES (?,?,?,?)",
-                    [(n, c, p, NOTE_OLD) for n, c, p in MANUAL_SHIPS])
+    con.executemany(
+        """INSERT INTO manual_ships(name, code, msrp_usd, note, category, subcategory, size_label)
+           VALUES (?,?,?,?,?,?,?)
+           ON CONFLICT(name) DO UPDATE SET code=excluded.code, category=excluded.category,
+               subcategory=excluded.subcategory, size_label=excluded.size_label""",
+        [(n, c, p, NOTE_OLD, r, sb, g) for n, c, p, r, sb, g in MANUAL_SHIPS])
+    con.executemany("DELETE FROM manual_ships WHERE name = ?", [(n,) for n in REMOVED_MANUAL])
     con.commit()
 
 
@@ -245,7 +272,9 @@ def update_vehicles(con):
             role, details = RMAP.get(foci, (foci, ""))
             status = m.get("production_status")
             status = loc(status) if isinstance(status, dict) else status
-            cat, sub = categorize(m.get("career"), m.get("role"))
+            cat, sub = categorize(m.get("career"), m.get("role"), bool(m.get("is_vehicle") or m.get("is_gravlev")))
+            if not cat and m.get("name") in ROLE_OVERRIDES:
+                cat, sub = ROLE_OVERRIDES[m["name"]]
             size = size_label(m)
             msrp = m.get("msrp")
             msrp = float(msrp) if msrp not in (None, "", 0) else None
@@ -377,7 +406,7 @@ def export_xlsx(con=None):
     con = con or connect()
     cur = con.execute("SELECT * FROM ship_prices ORDER BY lower(hersteller), lower(schiff)")
     cols = [d[0] for d in cur.description]
-    titles = {"hersteller": "Hersteller", "kuerzel": "Kürzel", "konzept": "Konzept (1=ja)", "schiff": "Schiff", "typ": "Typ", "kategorie": "Kategorie", "subkategorie": "Sub-Kategorie", "groesse": "Größe",
+    titles = {"hersteller": "Hersteller", "kuerzel": "Kürzel", "konzept": "Konzept (1=ja)", "schiff": "Schiff", "typ": "Typ", "rolle": "Rolle", "subkategorie": "Sub-Kategorie", "groesse": "Größe",
               "status": "Status", "ingame_kaufbar": "Ingame kaufbar?",
               "preis_auec": "Ingame-Preis (aUEC)", "preis_usd": "Echtgeld (USD)",
               "preis_eur_inkl_mwst": "Echtgeld (EUR, inkl. MwSt.)", "auec_pro_eur": "aUEC pro EUR",
