@@ -253,7 +253,7 @@ function stopsHtml(plan,order,legs,o){
   const seq=order&&order.length?order:Object.keys(byPlace).map(Number).sort((a,b)=>sum(byPlace[b])-sum(byPlace[a]));
   function sum(lines){return lines.reduce((s,l)=>s+l.take*l.o.price,0);}
   return seq.filter(pk=>byPlace[pk]).map((pk,i)=>{
-    const lines=byPlace[pk],pl=PL[pk];
+    const lines=byPlace[pk].slice().sort((a,b)=>b.take*b.o.price-a.take*a.o.price),pl=PL[pk];
     const terms=[...new Set(lines.map(l=>TM[l.o.tid].tn))].join(', ');
     const leg=legs&&legs[i]!=null&&legs[i]>=0?` · <b>${nf(legs[i])} Gm</b> ${i===0?(o.start?'vom Startpunkt':''):'vom vorherigen Stopp'}`:'';
     return `<div class="stop"><div class="sname">${order&&order.length?`${i+1}. `:''}${esc(pl.pl)} <span class="sloc">· ${esc(pl.lc)} · Terminal: ${esc(terms)}${leg}</span></div>`+
