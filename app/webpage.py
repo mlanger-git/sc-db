@@ -32,7 +32,8 @@ PAGE = r'''<!DOCTYPE html>
   td.c { text-align:center; }
   table.hide-shops .shop { display:none; }
   td.n { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
-  .sv { margin-left:14px; color:#b45309; text-transform:none; letter-spacing:0; font-weight:600; }
+  .sv { margin-left:14px; text-transform:none; letter-spacing:0; font-weight:600; }
+  .sv.ok { color:#15803d; } .sv.bad { color:#b91c1c; background:#fee2e2; padding:3px 8px; border-radius:6px; }
   td select.own { font-family:inherit; font-size:.78rem; border:1px solid #c8d4e4; border-radius:6px; padding:3px 4px; background:#f4f7fa; }
   td.w { text-align:center; } td.w input { width:17px; height:17px; cursor:pointer; }
   tr.owned td { background:#eef8f0; }
@@ -75,15 +76,19 @@ const COLS = [["hersteller","Hersteller"],["schiff","Name"],["besitz","Besitze i
   ["ingame_kaufbar","Ingame kaufbar?","c"],["status","Status"],["rolle","Rolle"],["subkategorie","Sub-Kategorie"],["groesse","Größe"],["scu","SCU","n"],["anmerkung","Anmerkung"]];
 const LS='sc_state_v1';let serverOk=true;
 function applyState(st){DATA.forEach(r=>{const s=st[r.schiff]||{};r.besitz=s.besitz||'';r.wunsch=s.wunsch?1:'';});}
-function note(){$('sv').textContent=serverOk?'':'Speichern auf der NAS nicht möglich – Eintrag nur in diesem Browser';}
+function note(msg){const e=$('sv');if(!serverOk){e.className='sv bad';e.textContent='⚠ NICHT auf der NAS gespeichert – Eintraege liegen nur in diesem Browser und koennen verloren gehen';}
+  else{e.className='sv ok';e.textContent=msg||'';}}
 async function loadState(){let st=null;
   try{const r=await fetch('sc_state.php',{cache:'no-store'});if(!r.ok)throw 0;st=await r.json();if(!st||Array.isArray(st))st={};serverOk=true;}
   catch(e){serverOk=false;try{st=JSON.parse(localStorage.getItem(LS)||'{}');}catch(e2){st={};}}
-  applyState(st);note();render();}
+  if(serverOk&&!Object.keys(st).length){let loc={};try{loc=JSON.parse(localStorage.getItem(LS)||'{}');}catch(e){}
+    const names=Object.keys(loc);
+    if(names.length){st=loc;for(const n of names){try{const x=await fetch('sc_state.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:n,besitz:loc[n].besitz||'',wunsch:!!loc[n].wunsch})});const j=await x.json();if(!j.ok)throw 0;}catch(e){serverOk=false;}}}}
+  applyState(st);note(serverOk?'✓ Speicherung auf der NAS aktiv':'');render();}
 function saveRow(r){
   try{const st=JSON.parse(localStorage.getItem(LS)||'{}');if(r.besitz||r.wunsch)st[r.schiff]={besitz:r.besitz,wunsch:!!r.wunsch};else delete st[r.schiff];localStorage.setItem(LS,JSON.stringify(st));}catch(e){}
   fetch('sc_state.php',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({name:r.schiff,besitz:r.besitz,wunsch:!!r.wunsch})})
-    .then(x=>{serverOk=x.ok;note();}).catch(()=>{serverOk=false;note();});}
+    .then(x=>x.json()).then(j=>{serverOk=!!j.ok;note(serverOk?'✓ gespeichert '+new Date().toLocaleTimeString('de-DE'):'');}).catch(()=>{serverOk=false;note();});}
 let sortKey="hersteller", desc=false;
 const $=id=>document.getElementById(id);
 function fill(sel,key){[...new Set(DATA.map(r=>r[key]).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'de')).forEach(v=>{const o=document.createElement('option');o.value=o.textContent=v;$(sel).appendChild(o);});}
