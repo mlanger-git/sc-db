@@ -20,7 +20,7 @@ PAGE = r'''<!DOCTYPE html>
   .subtitle { font-size:.72rem; color:#8090a8; letter-spacing:.08em; text-transform:uppercase; margin-bottom:22px; }
   .panel { background:#fff; border:1px solid #d0d8e4; border-radius:12px; padding:16px 20px; margin-bottom:18px; box-shadow:0 1px 4px rgba(0,0,0,.05); display:flex; flex-wrap:wrap; gap:14px; align-items:end; }
   .panel label { display:block; font-family:'Rajdhani',sans-serif; font-size:.68rem; font-weight:700; letter-spacing:.14em; text-transform:uppercase; color:#6080a0; margin-bottom:5px; }
-  .panel input[type=text], .panel select { font-family:'Exo 2',sans-serif; font-size:.85rem; color:#1a2030; background:#f4f7fa; border:1px solid #c8d4e4; border-radius:8px; padding:7px 12px; min-width:170px; }
+  .panel input[type=text], .panel input[type=number], .panel select { font-family:'Exo 2',sans-serif; font-size:.85rem; color:#1a2030; background:#f4f7fa; border:1px solid #c8d4e4; border-radius:8px; padding:7px 12px; min-width:170px; }
   .chk { display:flex; align-items:center; gap:6px; font-size:.82rem; padding-bottom:7px; cursor:pointer; }
   .count { font-family:'Rajdhani',sans-serif; font-size:.8rem; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:#6080a0; margin-bottom:10px; }
   .count b { color:#1a2030; font-size:1rem; }
@@ -32,7 +32,7 @@ PAGE = r'''<!DOCTYPE html>
   td.c { text-align:center; }
   table.hide-shops .shop { display:none; }
   td.n { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
-  .rst { font-family:'Exo 2',sans-serif; font-size:.82rem; font-weight:600; color:#1a2030; background:#e8eef5; border:1px solid #c8d4e4; border-radius:8px; padding:7px 14px; cursor:pointer; }
+  .rst { margin-left:auto; font-family:'Exo 2',sans-serif; font-size:.82rem; font-weight:600; color:#1a2030; background:#e8eef5; border:1px solid #c8d4e4; border-radius:8px; padding:7px 14px; cursor:pointer; }
   .rst:hover { background:#d8e2ee; }
   .sv { margin-left:14px; text-transform:none; letter-spacing:0; font-weight:600; }
   .sv.ok { color:#15803d; } .sv.bad { color:#b91c1c; background:#fee2e2; padding:3px 8px; border-radius:6px; }
@@ -58,6 +58,7 @@ PAGE = r'''<!DOCTYPE html>
   <div><label>Händler</label><select id="fs"><option value="">Alle</option></select></div>
   <div><label>Status</label><select id="fz"><option value="">Alle</option><option value="k">Nur Konzept / nicht geprüft</option><option value="n">Ohne Konzept</option></select></div>
   <div><label>Besitze ich</label><select id="fb"><option value="">Alle</option><option value="any">Im Besitz (egal wie)</option><option value="Echtgeld">Echtgeld</option><option value="Spielgeld">Spielgeld</option><option value="none">Nicht im Besitz</option></select></div>
+  <div><label>Frachtmenge ab (SCU)</label><input type="number" id="fc" min="0" step="1" placeholder="z. B. 100" style="min-width:120px;width:120px"></div>
   <label class="chk"><input type="checkbox" id="fw"> nur Wunschliste</label>
   <label class="chk"><input type="checkbox" id="fi"> nur ingame kaufbar</label>
   <label class="chk"><input type="checkbox" id="fv"> Händler-Spalten anzeigen</label>
@@ -98,8 +99,8 @@ function fill(sel,key){[...new Set(DATA.map(r=>r[key]).filter(Boolean))].sort((a
 fill('fh','hersteller');SHOPS.forEach(([k])=>{const o=document.createElement('option');o.value=o.textContent=k;$('fs').appendChild(o);});fill('fk','rolle');fill('fr','subkategorie');fill('fg','groesse');
 $('head').innerHTML=COLS.map(c=>`<th data-k="${c[0]}" class="${(c[2]||'').replace(/\b[nc]\b/,'').trim()}">${c[1]}</th>`).join('');
 $('head').onclick=e=>{const k=e.target.dataset.k;if(!k)return;desc=(sortKey===k)?!desc:false;sortKey=k;render();};
-['q','fh','fk','fr','fg','fs','fz','fi','fb','fw'].forEach(i=>$(i).addEventListener('input',render));
-$('rst').addEventListener('click',()=>{$('q').value='';['fh','fk','fr','fg','fs','fz','fb'].forEach(i=>{$(i).value='';});$('fi').checked=false;$('fw').checked=false;render();});
+['q','fh','fk','fr','fg','fs','fz','fi','fb','fw','fc'].forEach(i=>$(i).addEventListener('input',render));
+$('rst').addEventListener('click',()=>{$('q').value='';['fh','fk','fr','fg','fs','fz','fb','fc'].forEach(i=>{$(i).value='';});$('fi').checked=false;$('fw').checked=false;render();});
 $('fv').addEventListener('input',()=>$('tbl').classList.toggle('hide-shops',!$('fv').checked));
 const fmt=(v,k)=>{if(v==null||v==='')return '';if(typeof v==='number'){const d=(k==='preis_eur_inkl_mwst'||k==='preis_usd')?2:0;let s=v.toLocaleString('de-DE',{minimumFractionDigits:d,maximumFractionDigits:k==='scu'?2:d});if(k==='preis_usd')s+=' $';if(k==='preis_eur_inkl_mwst')s+=' €';return s;}return String(v).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));};
 function render(){
@@ -109,6 +110,7 @@ function render(){
     &&(!$('fs').value||(r.haendler||'').split(', ').includes($('fs').value))
     &&(!$('fz').value||($('fz').value==='k')===!!r.konzept)
     &&(!$('fb').value||($('fb').value==='any'?!!r.besitz:$('fb').value==='none'?!r.besitz:r.besitz===$('fb').value))
+    &&(!$('fc').value||(r.scu!=null&&r.scu>=+$('fc').value))
     &&(!$('fw').checked||!!r.wunsch)
     &&(!$('fi').checked||r.ingame_kaufbar==='Ja'));
   rows.sort((a,b)=>{const x=a[sortKey],y=b[sortKey];if(x==null||x==='')return 1;if(y==null||y==='')return -1;
