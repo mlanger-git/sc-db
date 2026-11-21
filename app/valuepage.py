@@ -24,7 +24,7 @@ PAGE = r'''<!DOCTYPE html>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Exo+2:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background:#f5f7fa; color:#1a2030; font-family:'Exo 2',sans-serif; padding:28px 28px 48px; max-width:1200px; }
+  body { background:#f5f7fa; color:#1a2030; font-family:'Exo 2',sans-serif; padding:28px 28px 48px; max-width:1600px; }
   .topbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:22px; padding-bottom:16px; border-bottom:1px solid #d8e2ec; }
   .back-btn { display:inline-flex; gap:6px; font-size:.76rem; font-weight:600; color:#4a5a70; text-decoration:none; padding:5px 12px; border:1px solid #d0d8e4; border-radius:7px; background:#fff; }
   .back-btn:hover { background:#e8eef5; color:#1a2030; }
@@ -41,16 +41,18 @@ PAGE = r'''<!DOCTYPE html>
   .sum { font-size:.82rem; color:#4a5a70; margin:0 0 8px; }
   .warn { background:#fef3c7; border:1px solid #f0d58a; color:#7a4b00; border-radius:8px; padding:7px 12px; font-size:.8rem; margin-bottom:10px; }
   .wrap { background:#fff; border:1px solid #d0d8e4; border-radius:12px; box-shadow:0 1px 4px rgba(0,0,0,.05); overflow-x:auto; }
-  table { border-collapse:collapse; width:100%; font-size:.85rem; }
-  th { text-align:left; font-family:'Rajdhani',sans-serif; font-size:.82rem; letter-spacing:.07em; text-transform:uppercase; color:#3a4a60; background:#eef2f7; padding:9px 12px; white-space:nowrap; position:sticky; top:0; cursor:pointer; user-select:none; border-bottom:1px solid #d0d8e4; }
+  table { border-collapse:collapse; width:100%; font-size:.8rem; }
+  th { text-align:left; font-family:'Rajdhani',sans-serif; font-size:.76rem; letter-spacing:.04em; text-transform:uppercase; color:#3a4a60; background:#eef2f7; padding:8px 8px; white-space:nowrap; position:sticky; top:0; cursor:pointer; user-select:none; border-bottom:1px solid #d0d8e4; }
   th.num, td.num { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
   th.on { color:#15803d; }
-  td { padding:8px 12px; border-bottom:1px solid #edf1f6; vertical-align:top; }
+  td { padding:7px 8px; border-bottom:1px solid #edf1f6; vertical-align:top; }
+  td.bp { white-space:normal; min-width:130px; max-width:210px; }
+  .abb { white-space:nowrap; }
   tr:last-child td { border-bottom:none; }
   tr:hover td { background:#f8fafc; }
   .nm { font-weight:600; }
   .sub { font-size:.72rem; color:#6b7a90; display:block; font-weight:400; }
-  .bd { display:inline-block; font-size:.68rem; font-weight:600; padding:1px 7px; border-radius:6px; margin-right:4px; border:1px solid; }
+  .bd { display:inline-block; font-size:.68rem; font-weight:600; padding:1px 7px; border-radius:6px; margin-right:3px; border:1px solid; }
   .bS { color:#1d4ed8; background:#eff6ff; border-color:#bfdbfe; }
   .bR { color:#b45309; background:#fffbeb; border-color:#fcd34d; }
   .bH { color:#15803d; background:#f0fdf4; border-color:#86efac; }
@@ -211,11 +213,11 @@ function renderMining(o,st,qty){
   $('sum').textContent=rows.length+' Mineralien'+(rows.filter(r=>!r.f&&!r.r).length?` (${rows.filter(r=>!r.f&&!r.r).length} ohne Käufer)`:'');
   $('tb').innerHTML=rows.length?rows.map(({g,f,r})=>{
     const none='<span class="none">–</span>';
-    const fc=f?`<td class="num val">${nf(f.med)}</td><td class="num">${nf(f.avg)}</td><td class="num">${nf(f.best)}<span class="sub">${esc(f.bestAt.pl)} · ${esc(f.bestAt.s)}</span></td><td class="num">${ageHtml(f.age)}<span class="sub">${f.cnt} Terminal${f.cnt>1?'s':''}</span></td>`
+    const fc=f?`<td class="num val">${nf(f.med)}</td><td class="num">${nf(f.avg)}</td><td class="num bp">${nf(f.best)}<span class="sub">${esc(f.bestAt.pl)} · ${esc(f.bestAt.s)}</span></td><td class="num">${ageHtml(f.age)}<span class="sub">${f.cnt} Terminal${f.cnt>1?'s':''}</span></td>`
       :`<td class="num none" colspan="4">kein Käufer</td>`;
     const rc=r?`<td class="num">${nf(r.med)}</td><td class="num">${nf(r.avg)}</td><td class="num">${ageHtml(r.age)}<span class="sub">${r.cnt} Terminal${r.cnt>1?'s':''}</span></td>`:`<td class="num none">–</td><td class="num none">–</td><td class="num none">–</td>`;
     const w=f||r;
-    return `<tr><td class="nm">${esc(g.name)}<span class="sub">${esc(g.k||'')}</span></td><td>${badgesOf(g.m,g.x)}</td>${fc}${rc}`+(qty>0?`<td class="num val">${w?nf(w.med*qty)+' aUEC':'–'}</td>`:'')+`</tr>`;
+    return `<tr><td class="nm">${esc(g.name)}<span class="sub">${esc(g.k||'')}</span></td><td class="abb">${badgesOf(g.m,g.x)}</td>${fc}${rc}`+(qty>0?`<td class="num val">${w?nf(w.med*qty)+' aUEC':'–'}</td>`:'')+`</tr>`;
   }).join(''):`<tr><td class="empty" colspan="11">Kein Mineral passt zu den Filtern.</td></tr>`;
 }
 function renderAll(o,st,qty){
@@ -228,10 +230,10 @@ function renderAll(o,st,qty){
   $('sum').textContent=rows.length+' Waren'+(rows.filter(r=>!r.s).length?` (${rows.filter(r=>!r.s).length} ohne Käufer)`:'');
   const TYP={raw:'<span class="typ-raw">Roh</span>',ref:'<span class="typ-ref">Raffiniert</span>',oth:'<span class="none">–</span>'};
   $('tb').innerHTML=rows.length?rows.map(({c,s})=>{
-    const cells=s?`<td class="num val">${nf(s.med)}</td><td class="num">${nf(s.avg)}</td><td class="num">${nf(s.best)}<span class="sub">${esc(s.bestAt.pl)} · ${esc(s.bestAt.s)}</span></td>`+
+    const cells=s?`<td class="num val">${nf(s.med)}</td><td class="num">${nf(s.avg)}</td><td class="num bp">${nf(s.best)}<span class="sub">${esc(s.bestAt.pl)} · ${esc(s.bestAt.s)}</span></td>`+
       `<td class="num">${s.min===s.max?nf(s.min):nf(s.min)+' – '+nf(s.max)}</td><td class="num">${s.cnt}</td><td class="num">${ageHtml(s.age)}</td>`
       :`<td class="num none" colspan="6">kein Terminal kauft diese Ware</td>`;
-    return `<tr><td class="nm">${esc(c.n)}</td><td>${TYP[c.t||'oth']}</td><td>${badgesOf(c.m,c.x)}</td><td>${esc(c.k||'–')}</td>${cells}`+(qty>0?`<td class="num val">${s?nf(s.med*qty)+' aUEC':'–'}</td>`:'')+`</tr>`;
+    return `<tr><td class="nm">${esc(c.n)}</td><td>${TYP[c.t||'oth']}</td><td class="abb">${badgesOf(c.m,c.x)}</td><td>${esc(c.k||'–')}</td>${cells}`+(qty>0?`<td class="num val">${s?nf(s.med*qty)+' aUEC':'–'}</td>`:'')+`</tr>`;
   }).join(''):`<tr><td class="empty" colspan="11">Keine Ware passt zu den Filtern.</td></tr>`;
 }
 function render(){
