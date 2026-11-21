@@ -79,7 +79,7 @@ PAGE = r'''<!DOCTYPE html>
 
 <div class="panel">
   <div class="opts" style="margin-bottom:12px">
-    <div class="seg"><button type="button" id="vm" class="on">Mining</button><button type="button" id="va">Alle Waren</button></div>
+    <div class="seg"><button type="button" id="va" class="on">Alle Waren</button><button type="button" id="vm">Mining</button></div>
     <input type="text" id="q" placeholder="Ware suchen (z. B. Hadanite)" autocomplete="off">
     <label>Menge <input type="number" id="qty" min="0" step="1" placeholder="SCU" style="width:90px"></label>
     <button type="button" id="rst" style="margin-left:auto">Filter zurücksetzen</button>
@@ -130,7 +130,7 @@ const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',
 const LS='sc_werte_v2';
 const SYS=[...new Set(T.map(t=>t.s))].sort((a,b)=>['Stanton','Pyro','Nyx'].indexOf(a)-['Stanton','Pyro','Nyx'].indexOf(b));
 const MNAME={S:'Schiff',R:'ROC',H:'Hand',G:'GEO'}, MTITLE={S:'Schiffs-Mining (Prospector, MOLE, Orion …)',R:'ROC (Bodenfahrzeug)',H:'Handmining (Multitool)',G:'ATLS GEO (Mining-Powersuit, baut Hand- und ROC-Vorkommen ab)'};
-let view='mining', chip='', sortKey='fmed', sortDir=-1;
+let view='all', chip='', sortKey='med', sortDir=-1;
 
 $('sy').innerHTML=SYS.map(s=>`<label class="sy" style="display:inline-flex;gap:5px;margin-right:10px"><input type="checkbox" value="${esc(s)}" checked> ${esc(s)}</label>`).join('');
 const kinds=[...new Set(C.map(c=>c.k).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'de'));
@@ -141,7 +141,7 @@ const defSort=v=>v==='mining'?'fmed':'med';
 function save(){try{localStorage.setItem(LS,JSON.stringify({v:view,c:chip,q:$('q').value,fk:$('fk').value,qty:$('qty').value,
   sy:selSys(),oi:$('oi').checked,od:$('od').checked,oz:$('oz').checked,oa:$('oa').value,sk:sortKey,sd:sortDir}));}catch(e){}}
 function load(){try{const s=JSON.parse(localStorage.getItem(LS)||'null');if(!s)return;
-  if(s.v==='all')view='all';chip=['H','R','S'].includes(s.c)?s.c:'';
+  if(s.v==='mining')view='mining';chip=['H','R','G','S'].includes(s.c)?s.c:'';
   $('q').value=s.q||'';if(kinds.includes(s.fk))$('fk').value=s.fk;$('qty').value=s.qty||'';
   if(Array.isArray(s.sy)&&s.sy.some(x=>SYS.includes(x)))document.querySelectorAll('#sy input').forEach(i=>{i.checked=s.sy.includes(i.value);});
   $('oi').checked=!!s.oi;$('od').checked=!!s.od;$('oz').checked=!!s.oz;if(s.oa!=null)$('oa').value=s.oa;
@@ -161,7 +161,7 @@ function setView(v){view=v;sortKey=defSort(v);sortDir=-1;syncUi();save();render(
 $('vm').onclick=()=>setView('mining');$('va').onclick=()=>setView('all');
 $('chips').addEventListener('click',e=>{const b=e.target.closest('.chip');if(!b)return;chip=b.dataset.m;syncUi();save();render();});
 $('rst').onclick=()=>{$('q').value='';$('fk').value='';$('qty').value='';$('oi').checked=false;$('od').checked=false;$('oz').checked=false;$('oa').value='0';chip='';
-  document.querySelectorAll('#sy input').forEach(i=>i.checked=true);view='mining';sortKey='fmed';sortDir=-1;syncUi();save();render();};
+  document.querySelectorAll('#sy input').forEach(i=>i.checked=true);view='all';sortKey='med';sortDir=-1;syncUi();save();render();};
 
 function stats(o){
   const now=Date.now()/1000,by={},sys=selSys();
