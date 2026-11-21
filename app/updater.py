@@ -113,6 +113,10 @@ MANUAL_SHIPS = [
     ("Odyssey", "MISC", 700, "Exploration", "Expedition", "Large"),
     ("Orion", "RSI", 575, "Industrial", "Capital Mining", "Capital"),
 ]
+# SCU laut Star Citizen Wiki (starcitizen.tools, Infobox), Stand 21.11.2026; fehlende Schiffe: keine Angabe auf der Wiki-Seite
+MANUAL_SCU = {"Vulcan": 12, "Crucible": 230, "Nautilus": 64, "Merchantman": 2880, "Pioneer": 1000,
+              "Genesis Starliner": 300, "Kraken": 3792, "Endeavor": 500, "Hull D": 6912, "Hull E": 12288,
+              "Odyssey": 252, "Orion": 384}
 REMOVED_MANUAL = ["Endeavor Olympic"]  # gibt es nicht
 # API-Schiffe ohne career/role: Name -> (Rolle, Sub-Kategorie)
 # Schiffe, die laut Spiel schon fliegbar sind, in der API aber noch als Konzept stehen
@@ -198,6 +202,8 @@ def init_db(con):
         for col in ("category", "subcategory", "size_label"):
             if col not in mcols:
                 con.execute(f"ALTER TABLE manual_ships ADD COLUMN {col} TEXT")
+        if "cargo_scu" not in mcols:
+            con.execute("ALTER TABLE manual_ships ADD COLUMN cargo_scu REAL")
         con.commit()
     schema = os.path.join(os.path.dirname(os.path.abspath(__file__)), "schema.sql")
     with open(schema, encoding="utf-8") as f:
@@ -205,11 +211,11 @@ def init_db(con):
     con.execute("INSERT OR IGNORE INTO settings(key, value) VALUES ('vat_rate', ?)", (DEFAULT_VAT,))
     con.executemany("INSERT OR REPLACE INTO manufacturers(code, name) VALUES (?,?)", MANUFACTURERS.items())
     con.executemany(
-        """INSERT INTO manual_ships(name, code, msrp_usd, note, category, subcategory, size_label)
-           VALUES (?,?,?,?,?,?,?)
+        """INSERT INTO manual_ships(name, code, msrp_usd, note, category, subcategory, size_label, cargo_scu)
+           VALUES (?,?,?,?,?,?,?,?)
            ON CONFLICT(name) DO UPDATE SET code=excluded.code, category=excluded.category,
-               subcategory=excluded.subcategory, size_label=excluded.size_label""",
-        [(n, c, p, NOTE_OLD, r, sb, g) for n, c, p, r, sb, g in MANUAL_SHIPS])
+               subcategory=excluded.subcategory, size_label=excluded.size_label, cargo_scu=excluded.cargo_scu""",
+        [(n, c, p, NOTE_OLD, r, sb, g, MANUAL_SCU.get(n)) for n, c, p, r, sb, g in MANUAL_SHIPS])
     con.executemany("DELETE FROM manual_ships WHERE name = ?", [(n,) for n in REMOVED_MANUAL])
     con.commit()
 

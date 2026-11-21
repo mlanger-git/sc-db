@@ -75,7 +75,8 @@ CREATE TABLE IF NOT EXISTS manual_ships (
     note     TEXT,
     category    TEXT,
     subcategory TEXT,
-    size_label  TEXT
+    size_label  TEXT,
+    cargo_scu   REAL
 );
 
 -- Fertige Sicht, entspricht der Excel-Liste
@@ -122,7 +123,7 @@ LEFT JOIN manufacturers m ON m.code = COALESCE(r.i_code, r.manufacturer_code)
 WHERE r.rn = 1
 UNION ALL
 -- Schiffe nur aus der manuellen Liste (nicht in der API)
-SELECT COALESCE(m.name, ms.code), ms.code, ms.name, 'Schiff', ms.category, ms.subcategory, ms.size_label, NULL,
+SELECT COALESCE(m.name, ms.code), ms.code, ms.name, 'Schiff', ms.category, ms.subcategory, ms.size_label, ms.cargo_scu,
        'Nicht geprüft', 1, 'Nein', NULL, ms.msrp_usd,
        ROUND(ms.msrp_usd / fxr.rate * (1 + fxr.vat), 2), NULL, NULL, ms.note
 FROM manual_ships ms CROSS JOIN fxr

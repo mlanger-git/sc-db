@@ -32,6 +32,8 @@ PAGE = r'''<!DOCTYPE html>
   td.c { text-align:center; }
   table.hide-shops .shop { display:none; }
   td.n { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .rst { font-family:'Exo 2',sans-serif; font-size:.82rem; font-weight:600; color:#1a2030; background:#e8eef5; border:1px solid #c8d4e4; border-radius:8px; padding:7px 14px; cursor:pointer; }
+  .rst:hover { background:#d8e2ee; }
   .sv { margin-left:14px; text-transform:none; letter-spacing:0; font-weight:600; }
   .sv.ok { color:#15803d; } .sv.bad { color:#b91c1c; background:#fee2e2; padding:3px 8px; border-radius:6px; }
   td select.own { font-family:inherit; font-size:.78rem; border:1px solid #c8d4e4; border-radius:6px; padding:3px 4px; background:#f4f7fa; }
@@ -58,6 +60,7 @@ PAGE = r'''<!DOCTYPE html>
   <div><label>Besitze ich</label><select id="fb"><option value="">Alle</option><option value="any">Im Besitz (egal wie)</option><option value="Echtgeld">Echtgeld</option><option value="Spielgeld">Spielgeld</option><option value="none">Nicht im Besitz</option></select></div>
   <label class="chk"><input type="checkbox" id="fw"> nur Wunschliste</label>
   <label class="chk"><input type="checkbox" id="fi"> nur ingame kaufbar</label>
+  <button type="button" id="rst" class="rst">Filter zurücksetzen</button>
   <label class="chk"><input type="checkbox" id="fv"> Händler-Spalten anzeigen</label>
 </div>
 <div class="count"><b id="cnt">0</b> Einträge <span id="sv" class="sv"></span></div>
@@ -96,6 +99,7 @@ fill('fh','hersteller');SHOPS.forEach(([k])=>{const o=document.createElement('op
 $('head').innerHTML=COLS.map(c=>`<th data-k="${c[0]}" class="${(c[2]||'').replace(/\b[nc]\b/,'').trim()}">${c[1]}</th>`).join('');
 $('head').onclick=e=>{const k=e.target.dataset.k;if(!k)return;desc=(sortKey===k)?!desc:false;sortKey=k;render();};
 ['q','fh','fk','fr','fg','fs','fz','fi','fb','fw'].forEach(i=>$(i).addEventListener('input',render));
+$('rst').addEventListener('click',()=>{$('q').value='';['fh','fk','fr','fg','fs','fz','fb'].forEach(i=>{$(i).value='';});$('fi').checked=false;$('fw').checked=false;render();});
 $('fv').addEventListener('input',()=>$('tbl').classList.toggle('hide-shops',!$('fv').checked));
 const fmt=(v,k)=>{if(v==null||v==='')return '';if(typeof v==='number'){const d=(k==='preis_eur_inkl_mwst'||k==='preis_usd')?2:0;let s=v.toLocaleString('de-DE',{minimumFractionDigits:d,maximumFractionDigits:k==='scu'?2:d});if(k==='preis_usd')s+=' $';if(k==='preis_eur_inkl_mwst')s+=' €';return s;}return String(v).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));};
 function render(){
