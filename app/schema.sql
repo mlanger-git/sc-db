@@ -79,6 +79,25 @@ CREATE TABLE IF NOT EXISTS manual_ships (
     cargo_scu   REAL
 );
 
+-- UEX-Daten fuer den Frachtrechner (Terminals, Waren, Verkaufspreise je Terminal; Stanton, Pyro, Nyx)
+CREATE TABLE IF NOT EXISTS uex_terminals (
+    id INTEGER PRIMARY KEY, name TEXT, nickname TEXT, displayname TEXT,
+    star_system TEXT, planet TEXT, orbit TEXT, moon TEXT, space_station TEXT, city TEXT, outpost TEXT,
+    max_container_size INTEGER, is_nqa INTEGER, is_refinery INTEGER, is_cargo_center INTEGER,
+    has_loading_dock INTEGER, has_freight_elevator INTEGER
+);
+CREATE TABLE IF NOT EXISTS uex_commodities (
+    id INTEGER PRIMARY KEY, name TEXT, code TEXT, kind TEXT, is_illegal INTEGER, is_raw INTEGER, weight_scu REAL
+);
+-- price_sell = Auszahlung an den Spieler je SCU; scu_sell = gemeldete Nachfrage, scu_sell_avg = Durchschnitt;
+-- status_sell 7 = keine Nachfrage
+CREATE TABLE IF NOT EXISTS uex_prices (
+    id_terminal INTEGER, id_commodity INTEGER, price_sell REAL, price_sell_avg REAL,
+    scu_sell REAL, scu_sell_avg REAL, scu_sell_stock REAL, status_sell INTEGER,
+    container_sizes TEXT, date_modified INTEGER,
+    PRIMARY KEY (id_terminal, id_commodity)
+);
+
 -- Fertige Sicht, entspricht der Excel-Liste
 DROP VIEW IF EXISTS ship_prices;
 CREATE VIEW ship_prices AS

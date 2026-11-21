@@ -22,6 +22,8 @@ from bs4 import BeautifulSoup
 DB_PATH = os.environ.get("DB_PATH", "/data/starcitizen.db")
 EXPORT_PATH = os.environ.get("EXPORT_PATH", "/data/Star_Citizen_Schiffspreise.xlsx")
 WEB_PATH = os.environ.get("WEB_PATH", "/web-out/SC_Schiffspreise.html")
+TRADE_PATH = os.environ.get("TRADE_PATH", os.path.join(os.path.dirname(WEB_PATH), "SC_Frachtrechner.html"))
+TRADE_INTERVAL_HOURS = float(os.environ.get("TRADE_INTERVAL_HOURS", "3"))
 INTERVAL_HOURS = float(os.environ.get("UPDATE_INTERVAL_HOURS", "24"))
 DEFAULT_VAT = os.environ.get("VAT_RATE", "0.19")
 
@@ -395,7 +397,9 @@ def update_ingame(con):
 def run_once():
     con = connect()
     init_db(con)
-    for source, fn in (("fx", update_fx), ("vehicles", update_vehicles), ("ingame", update_ingame)):
+    import uex
+    for source, fn in (("fx", update_fx), ("vehicles", update_vehicles), ("ingame", update_ingame),
+                       ("uex", uex.update)):
         try:
             msg = fn(con)
             log(f"{source}: OK - {msg}")
@@ -413,6 +417,33 @@ def run_once():
         log(f"Webseite: {n} Eintraege -> {WEB_PATH}")
     except Exception as e:  # noqa: BLE001
         log(f"webseite: FEHLER - {e}")
+    try:
+        import tradepage
+        n = tradepage.build(con, TRADE_PATH)
+        log(f"Frachtrechner: {n} Preise -> {TRADE_PATH}")
+    except Exception as e:  # noqa: BLE001
+        log(f"frachtrechner: FEHLER - {e}")
+    con.close()
+
+
+def run_trade():
+    """Nur die UEX-Preise und den Frachtrechner aktualisieren (die Preise aendern sich stuendlich)."""
+    import uex
+    import tradepage
+    con = connect()
+    init_db(con)
+    try:
+        msg = uex.update(con)
+        log(f"uex: OK - {msg}")
+        log_run(con, "uex", "ok", msg)
+    except Exception as e:  # noqa: BLE001
+        log(f"uex: FEHLER - {e}")
+        log_run(con, "uex", "fehler", str(e))
+    try:
+        n = tradepage.build(con, TRADE_PATH)
+        log(f"Frachtrechner: {n} Preise -> {TRADE_PATH}")
+    except Exception as e:  # noqa: BLE001
+        log(f"frachtrechner: FEHLER - {e}")
     con.close()
 
 
@@ -469,13 +500,20 @@ def main():
         con = connect()
         init_db(con)
         print(webpage.build(con, WEB_PATH), "Eintraege ->", WEB_PATH)
+    elif cmd == "trade":
+        run_trade()
     elif cmd == "status":
         status()
     elif cmd == "loop":
+        last_full = 0.0
         while True:
-            run_once()
-            log(f"naechster Lauf in {INTERVAL_HOURS} Stunden")
-            time.sleep(INTERVAL_HOURS * 3600)
+            if time.time() - last_full >= INTERVAL_HOURS * 3600 - 60:
+                run_once()
+                last_full = time.time()
+            else:
+                run_trade()
+            log(f"naechste Preisaktualisierung in {TRADE_INTERVAL_HOURS:g} Stunden")
+            time.sleep(TRADE_INTERVAL_HOURS * 3600)
     else:
         print(__doc__)
         sys.exit(1)
