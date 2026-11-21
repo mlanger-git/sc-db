@@ -45,7 +45,7 @@ PAGE = r'''<!DOCTYPE html>
 </style>
 </head>
 <body>
-<div class="topbar"><a href="./" class="back-btn">← Star Citizen</a><a href="SC_Frachtrechner.html" class="back-btn">Frachtrechner</a></div>
+<div class="topbar"><a href="./" class="back-btn">← Star Citizen</a><a href="SC_Frachtrechner.html" class="back-btn">Frachtrechner</a><a href="SC_Warenwerte.html" class="back-btn">Warenwerte</a></div>
 <h1>SC Schiffspreise</h1>
 <div class="subtitle">Ingame-Preise (aUEC) und Echtgeld-Preise (EUR inkl. MwSt.) · Stand __STAND__</div>
 
