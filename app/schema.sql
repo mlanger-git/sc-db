@@ -87,7 +87,8 @@ CREATE TABLE IF NOT EXISTS uex_terminals (
     has_loading_dock INTEGER, has_freight_elevator INTEGER
 );
 CREATE TABLE IF NOT EXISTS uex_commodities (
-    id INTEGER PRIMARY KEY, name TEXT, code TEXT, kind TEXT, is_illegal INTEGER, is_raw INTEGER, weight_scu REAL
+    id INTEGER PRIMARY KEY, name TEXT, code TEXT, kind TEXT, is_illegal INTEGER, is_raw INTEGER, weight_scu REAL,
+    is_refined INTEGER, is_extractable INTEGER, is_harvestable INTEGER, id_parent INTEGER
 );
 -- price_sell = Auszahlung an den Spieler je SCU; scu_sell = gemeldete Nachfrage, scu_sell_avg = Durchschnitt;
 -- status_sell 7 = keine Nachfrage

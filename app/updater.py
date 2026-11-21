@@ -23,6 +23,7 @@ DB_PATH = os.environ.get("DB_PATH", "/data/starcitizen.db")
 EXPORT_PATH = os.environ.get("EXPORT_PATH", "/data/Star_Citizen_Schiffspreise.xlsx")
 WEB_PATH = os.environ.get("WEB_PATH", "/web-out/SC_Schiffspreise.html")
 TRADE_PATH = os.environ.get("TRADE_PATH", os.path.join(os.path.dirname(WEB_PATH), "SC_Frachtrechner.html"))
+VALUE_PATH = os.environ.get("VALUE_PATH", os.path.join(os.path.dirname(WEB_PATH), "SC_Warenwerte.html"))
 TRADE_INTERVAL_HOURS = float(os.environ.get("TRADE_INTERVAL_HOURS", "3"))
 INTERVAL_HOURS = float(os.environ.get("UPDATE_INTERVAL_HOURS", "24"))
 DEFAULT_VAT = os.environ.get("VAT_RATE", "0.19")
@@ -206,6 +207,12 @@ def init_db(con):
                 con.execute(f"ALTER TABLE manual_ships ADD COLUMN {col} TEXT")
         if "cargo_scu" not in mcols:
             con.execute("ALTER TABLE manual_ships ADD COLUMN cargo_scu REAL")
+        con.commit()
+    ccols = {r[1] for r in con.execute("PRAGMA table_info(uex_commodities)")}
+    if ccols:
+        for col in ("is_refined", "is_extractable", "is_harvestable", "id_parent"):
+            if col not in ccols:
+                con.execute(f"ALTER TABLE uex_commodities ADD COLUMN {col} INTEGER")
         con.commit()
     schema = os.path.join(os.path.dirname(os.path.abspath(__file__)), "schema.sql")
     with open(schema, encoding="utf-8") as f:
@@ -423,8 +430,19 @@ def run_once():
         log(f"Frachtrechner: {n} Preise -> {TRADE_PATH}")
     except Exception as e:  # noqa: BLE001
         log(f"frachtrechner: FEHLER - {e}")
+    _values(con)
     _distances(con)
     con.close()
+
+
+def _values(con):
+    """Seite Warenwerte neu erzeugen."""
+    try:
+        import valuepage
+        n = valuepage.build(con, VALUE_PATH)
+        log(f"Warenwerte: {n} Preise -> {VALUE_PATH}")
+    except Exception as e:  # noqa: BLE001
+        log(f"warenwerte: FEHLER - {e}")
 
 
 def _distances(con):
@@ -459,6 +477,7 @@ def run_trade():
         log(f"Frachtrechner: {n} Preise -> {TRADE_PATH}")
     except Exception as e:  # noqa: BLE001
         log(f"frachtrechner: FEHLER - {e}")
+    _values(con)
     _distances(con)
     con.close()
 

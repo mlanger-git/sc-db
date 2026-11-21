@@ -90,7 +90,8 @@ def update(con):
 
     com_rows = {
         _i(c.get("id")): (_i(c.get("id")), c.get("name"), c.get("code"), c.get("kind"),
-                          _i(c.get("is_illegal")), _i(c.get("is_raw")), _f(c.get("weight_scu")))
+                          _i(c.get("is_illegal")), _i(c.get("is_raw")), _f(c.get("weight_scu")),
+                          _i(c.get("is_refined")), _i(c.get("is_extractable")), _i(c.get("is_harvestable")), _i(c.get("id_parent")))
         for c in commodities if c.get("id") and c.get("name")}
 
     price_rows = []
@@ -112,7 +113,8 @@ def update(con):
         con.execute("DELETE FROM uex_commodities")
         con.execute("DELETE FROM uex_prices")
         con.executemany("INSERT INTO uex_terminals VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)", term_rows.values())
-        con.executemany("INSERT INTO uex_commodities VALUES (?,?,?,?,?,?,?)", com_rows.values())
+        con.executemany("INSERT INTO uex_commodities(id, name, code, kind, is_illegal, is_raw, weight_scu, is_refined, "
+                        "is_extractable, is_harvestable, id_parent) VALUES (?,?,?,?,?,?,?,?,?,?,?)", com_rows.values())
         con.executemany("INSERT INTO uex_prices VALUES (?,?,?,?,?,?,?,?,?,?)", price_rows)
         con.execute("INSERT OR REPLACE INTO settings(key, value) VALUES ('uex_updated_at', ?)", (ts,))
     return f"{len(term_rows)} Terminals, {len(com_rows)} Waren, {len(price_rows)} Verkaufspreise"

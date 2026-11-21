@@ -31,3 +31,9 @@ Die Ortsentfernungen (UEX `terminals_distances`, innerhalb eines Systems) liegen
 bis zu `UEX_DIST_PER_RUN` (Standard 500) nachgeladen, bei Fehlern oder Limit läuft ein neuer Versuch nach 10 Minuten.
 Die erste Befüllung braucht deshalb mehrere Läufe; solange Paare fehlen, rechnet die Seite mit den vorhandenen
 Entfernungen oder, wenn keine da sind, nur mit dem Erlös. Log-Zeile: `uex-dist: OK - N Entfernungen geladen, M offen`.
+
+## Warenwerte
+`app/valuepage.py` erzeugt `SC_Warenwerte.html` aus denselben UEX-Preisen (Median und Durchschnitt je SCU, bester Preis, Spanne,
+Terminalanzahl, Alter), mit Suche, Filtern (Abbauart, Roh/Raffiniert, Kategorie, Systeme) und optionaler Mengenangabe.
+Die Abbauart (Schiff, ROC, Handmining) liefert UEX nicht, sie steht in `app/mining.py` und muss bei neuen Patches nachgepflegt
+werden (Quellen stehen dort im Kopf). Pfad per `VALUE_PATH`, Kachel: `kachel_warenwerte.html`.

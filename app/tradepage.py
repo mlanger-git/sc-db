@@ -49,7 +49,7 @@ PAGE = r'''<!DOCTYPE html>
 </style>
 </head>
 <body>
-<div class="topbar"><a href="./" class="back-btn">← Star Citizen</a><a href="SC_Schiffspreise.html" class="back-btn">Schiffspreise</a></div>
+<div class="topbar"><a href="./" class="back-btn">← Star Citizen</a><a href="SC_Schiffspreise.html" class="back-btn">Schiffspreise</a><a href="SC_Warenwerte.html" class="back-btn">Warenwerte</a></div>
 <h1>SC Frachtrechner</h1>
 <div class="subtitle">Fracht verkaufen und Verkaufsstopps bündeln · Preisdaten Stand __UEXSTAND__</div>
 
