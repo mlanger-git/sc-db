@@ -60,8 +60,8 @@ PAGE = r'''<!DOCTYPE html>
   <div><label>Besitze ich</label><select id="fb"><option value="">Alle</option><option value="any">Im Besitz (egal wie)</option><option value="Echtgeld">Echtgeld</option><option value="Spielgeld">Spielgeld</option><option value="none">Nicht im Besitz</option></select></div>
   <label class="chk"><input type="checkbox" id="fw"> nur Wunschliste</label>
   <label class="chk"><input type="checkbox" id="fi"> nur ingame kaufbar</label>
-  <button type="button" id="rst" class="rst">Filter zurücksetzen</button>
   <label class="chk"><input type="checkbox" id="fv"> Händler-Spalten anzeigen</label>
+  <button type="button" id="rst" class="rst">Filter zurücksetzen</button>
 </div>
 <div class="count"><b id="cnt">0</b> Einträge <span id="sv" class="sv"></span></div>
 <div class="wrap"><table id="tbl" class="hide-shops">
