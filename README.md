@@ -34,6 +34,8 @@ Entfernungen oder, wenn keine da sind, nur mit dem Erlös. Log-Zeile: `uex-dist:
 
 ## Warenwerte
 `app/valuepage.py` erzeugt `SC_Warenwerte.html` aus denselben UEX-Preisen (Median und Durchschnitt je SCU, bester Preis, Spanne,
-Terminalanzahl, Alter), mit Suche, Filtern (Abbauart, Roh/Raffiniert, Kategorie, Systeme) und optionaler Mengenangabe.
+Terminalanzahl, Alter) in zwei Ansichten: "Mining" (eine Zeile pro Mineral, Raffiniert/verkaufsfertig und Roh nebeneinander,
+Schnellwahl Hand/ROC/Schiff) und "Alle Waren" (flache Liste mit Kategorie). Dazu Suche, optionale Mengenangabe und unter "Erweitert"
+Systeme, Preisalter, illegale Waren und Terminals ohne Nachfrage.
 Die Abbauart (Schiff, ROC, Handmining) liefert UEX nicht, sie steht in `app/mining.py` und muss bei neuen Patches nachgepflegt
 werden (Quellen stehen dort im Kopf). Pfad per `VALUE_PATH`, Kachel: `kachel_warenwerte.html`.
