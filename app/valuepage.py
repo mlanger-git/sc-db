@@ -54,6 +54,7 @@ PAGE = r'''<!DOCTYPE html>
   .bS { color:#1d4ed8; background:#eff6ff; border-color:#bfdbfe; }
   .bR { color:#b45309; background:#fffbeb; border-color:#fcd34d; }
   .bH { color:#15803d; background:#f0fdf4; border-color:#86efac; }
+  .bG { color:#7e22ce; background:#faf5ff; border-color:#d8b4fe; }
   .typ-raw { color:#b45309; } .typ-ref { color:#1d4ed8; }
   .val { font-weight:700; color:#15803d; }
   .none { color:#a0b0c0; }
@@ -88,6 +89,7 @@ PAGE = r'''<!DOCTYPE html>
     <button type="button" class="chip on" data-m="">Alle</button>
     <button type="button" class="chip" data-m="H">Handmining</button>
     <button type="button" class="chip" data-m="R">ROC</button>
+    <button type="button" class="chip" data-m="G">ATLS GEO</button>
     <button type="button" class="chip" data-m="S">Schiffs-Mining</button>
   </div>
   <div class="opts" id="catrow" style="display:none">
@@ -114,7 +116,7 @@ PAGE = r'''<!DOCTYPE html>
   <tbody id="tb"></tbody>
 </table></div>
 
-<div class="footer">Quelle: UEX Corp (Community-Preise je Terminal, stündlich aktualisiert, Fehler möglich) · Abbauart: Community-Übersichten (starvein.app, scminer.rocks, ROC-Guide Alpha 4.10) · Seite erzeugt __STAND__</div>
+<div class="footer">Quelle: UEX Corp (Community-Preise je Terminal, stündlich aktualisiert, Fehler möglich) · Abbauart: Community-Übersichten (starvein.app, scminer.rocks, ROC-Guide Alpha 4.10), ATLS GEO laut CIG-Q&amp;A · Seite erzeugt __STAND__</div>
 
 <script>
 const T = __TERMINALS__;
@@ -127,7 +129,7 @@ const nf=(n,d=0)=>Number(n).toLocaleString('de-DE',{minimumFractionDigits:d,maxi
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const LS='sc_werte_v2';
 const SYS=[...new Set(T.map(t=>t.s))].sort((a,b)=>['Stanton','Pyro','Nyx'].indexOf(a)-['Stanton','Pyro','Nyx'].indexOf(b));
-const MNAME={S:'Schiff',R:'ROC',H:'Hand'}, MTITLE={S:'Schiffs-Mining (Prospector, MOLE, Orion …)',R:'ROC (Bodenfahrzeug)',H:'Handmining (Multitool)'};
+const MNAME={S:'Schiff',R:'ROC',H:'Hand',G:'GEO'}, MTITLE={S:'Schiffs-Mining (Prospector, MOLE, Orion …)',R:'ROC (Bodenfahrzeug)',H:'Handmining (Multitool)',G:'ATLS GEO (Mining-Powersuit, baut Hand- und ROC-Vorkommen ab)'};
 let view='mining', chip='', sortKey='fmed', sortDir=-1;
 
 $('sy').innerHTML=SYS.map(s=>`<label class="sy" style="display:inline-flex;gap:5px;margin-right:10px"><input type="checkbox" value="${esc(s)}" checked> ${esc(s)}</label>`).join('');
@@ -149,7 +151,7 @@ function syncUi(){
   $('chips').style.display=view==='mining'?'':'none';$('catrow').style.display=view==='all'?'':'none';
   document.querySelectorAll('.chip').forEach(b=>b.classList.toggle('on',b.dataset.m===chip));
   $('hint').innerHTML=view==='mining'
-    ?'Eine Zeile pro Mineral. <b>Raffiniert / verkaufsfertig</b> ist das, was du am Terminal verkaufst (Edelsteine wie Hadanite direkt, Erze nach dem Raffinieren). <b>Roh</b> ist das unraffinierte Erz; dafür gibt es nur selten Käufer. Der <b>Median</b> ist der mittlere Preis über alle Terminals und weniger anfällig für Ausreißer als der <b>Durchschnitt</b>. Alle Preise in aUEC je SCU. Ein rotes ⏱ heißt: der neueste Preis ist älter als 7 Tage. Ein Fragezeichen bei der Abbauart heißt, dass die Quellen sich widersprechen.'
+    ?'Eine Zeile pro Mineral. <b>Raffiniert / verkaufsfertig</b> ist das, was du am Terminal verkaufst (Edelsteine wie Hadanite direkt, Erze nach dem Raffinieren). <b>Roh</b> ist das unraffinierte Erz; dafür gibt es nur selten Käufer. Der <b>Median</b> ist der mittlere Preis über alle Terminals und weniger anfällig für Ausreißer als der <b>Durchschnitt</b>. Alle Preise in aUEC je SCU. Ein rotes ⏱ heißt: der neueste Preis ist älter als 7 Tage. Der <b>ATLS GEO</b> (Mining-Powersuit) baut laut CIG alles ab, was per Hand oder mit dem ROC geht, aber keine Schiffs-Erze. Ein Fragezeichen bei der Abbauart heißt, dass die Quellen sich widersprechen.'
     :'Alle Waren als flache Liste, Roh und raffiniert getrennt. Preise in aUEC je SCU, der <b>Median</b> ist der mittlere Preis über alle Terminals. Ein rotes ⏱ heißt: der neueste Preis ist älter als 7 Tage.';
 }
 let timer=null;function schedule(){clearTimeout(timer);timer=setTimeout(()=>{save();render();},150);}

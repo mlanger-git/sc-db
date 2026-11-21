@@ -121,6 +121,8 @@ MANUAL_SCU = {"Vulcan": 12, "Crucible": 230, "Nautilus": 64, "Merchantman": 2880
               "Genesis Starliner": 300, "Kraken": 3792, "Endeavor": 500, "Hull D": 6912, "Hull E": 12288,
               "Odyssey": 252, "Orion": 384}
 REMOVED_MANUAL = ["Endeavor Olympic"]  # gibt es nicht
+# API-Fahrzeuge mit falscher SCU (API: 0, Wiki: 10 cSCU = 0,1 SCU Resource Pod)
+SCU_OVERRIDES = {"ATLS GEO": 0.1}
 # API-Schiffe ohne career/role: Name -> (Rolle, Sub-Kategorie)
 # Schiffe, die laut Spiel schon fliegbar sind, in der API aber noch als Konzept stehen
 FLIGHT_READY = {"Liberator"}
@@ -301,6 +303,8 @@ def update_vehicles(con):
                 scu = float(m.get("cargo_capacity")) if m.get("cargo_capacity") is not None else None
             except (TypeError, ValueError):
                 scu = None
+            if m.get("name") in SCU_OVERRIDES:
+                scu = SCU_OVERRIDES[m["name"]]
             msrp = m.get("msrp")
             msrp = float(msrp) if msrp not in (None, "", 0) else None
             old = con.execute("SELECT msrp_usd FROM vehicles WHERE slug=?", (slug,)).fetchone()

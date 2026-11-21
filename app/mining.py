@@ -6,6 +6,8 @@ dystopiandynasty.org (Stand Alpha 4.10.2), scminer.rocks und citizen-starter-gui
 Diamond und Inert Materials stammen aus der alten Wiki-Tabelle (PU 3.11.1, starcitizen.tools/Mineral_resources).
 Ein Fragezeichen heisst: die Quellen widersprechen sich (Saldynium und Sadaryx: eine Quelle nennt nur Handmining).
 Schluessel ist der Warenname ohne Zusatz wie "(Ore)", "(Raw)" oder "(Pure)".
+G = ATLS GEO (Mining-Powersuit): laut CIG-Q&A (Comm-Link 20514) baut er sowohl Handmining- als auch ROC-Vorkommen ab,
+also alles mit H oder R, aber keine Schiffs-Erze. Wird aus H und R abgeleitet.
 """
 import re
 
@@ -35,4 +37,10 @@ def methods(name):
         else:
             out.append(code[i])
             i += 1
+    sure = [v for v in out if v in ("H", "R")]
+    unsure = [v for v in out if v in ("H?", "R?")]
+    if sure:
+        out.append("G")
+    elif unsure:
+        out.append("G?")
     return out
