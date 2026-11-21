@@ -63,35 +63,56 @@ PAGE = r'''<!DOCTYPE html>
 
 <div class="panel">
   <h2>Einstellungen</h2>
-  <div class="opts" id="sysbox"></div>
+  <div class="opts">
+    <label>System <select id="os"></select></label>
+    <label>Startpunkt <select id="st"></select></label>
+    <label>Streckenkosten <input type="number" id="oc" min="0" step="500" value="2000" style="width:100px"> aUEC je Gm</label>
+  </div>
   <div class="opts" style="margin-top:10px">
     <label><input type="checkbox" id="od" checked> Nachfrage der Terminals berücksichtigen</label>
     <label><input type="checkbox" id="oi"> illegale Waren und No-Questions-Asked-Terminals einbeziehen</label>
     <label>Preise ignorieren, die älter sind als
       <select id="oa"><option value="0">(egal)</option><option value="3">3 Tage</option><option value="7">7 Tage</option><option value="14" selected>14 Tage</option><option value="30">30 Tage</option></select></label>
   </div>
-  <div class="hint">Ein „Stopp“ ist ein Ort (Station, Stadt oder Außenposten). Mehrere Terminals am selben Ort zählen als ein Stopp. Entfernungen und Flugzeiten sind in dieser Version nicht eingerechnet.</div>
+  <div class="hint">Als Startpunkt kannst du einen Himmelskörper (z. B. ArcCorp) oder einen Ort wählen. Die Route läuft vom Startpunkt über die Verkaufsstopps, ein Rückweg ist nicht eingerechnet.
+  Die <b>Streckenkosten</b> sagen, wie viel dir ein Gigameter Flugstrecke wert ist (Zeit, Treibstoff, Risiko). Je höher der Wert, desto eher wählt der Rechner nahe Stopps, bei 0 zählt nur der Erlös.
+  Ein „Stopp“ ist ein Ort (Station, Stadt oder Außenposten); mehrere Terminals am selben Ort zählen als ein Stopp. Entfernungen sind UEX-Schätzungen und gelten nur innerhalb eines Systems (Geladen: __DTXT__).</div>
 </div>
 
 <div id="res"></div>
 
-<div class="footer">Quelle: UEX Corp (Community-Preise je Terminal, stündlich aktualisiert, Fehler möglich). Preise in aUEC je SCU. Die Preise ändern sich im Spiel mit Angebot und Nachfrage; die Berechnung ist eine Orientierung, keine Garantie. Seite erzeugt __STAND__.</div>
+<div class="footer">Quelle: UEX Corp (Community-Preise je Terminal, stündlich aktualisiert, Fehler möglich). Preise in aUEC je SCU, Entfernungen in Gigametern (UEX-Schätzung). Die Preise ändern sich im Spiel mit Angebot und Nachfrage; die Berechnung ist eine Orientierung, keine Garantie. Seite erzeugt __STAND__.</div>
 
 <script>
 const T = __TERMINALS__;
+const PL = __PLACES__;
 const C = __COMMODITIES__;
 const P = __PRICES__;
+const DT = __DISTS__;
 const TM={}, CM={}, CBN={};
 T.forEach(t=>TM[t.id]=t); C.forEach(c=>{CM[c.id]=c;CBN[c.n.toLowerCase()]=c;});
+const N=PL.length, DM=new Float32Array(N*N).fill(-1);
+for(let i=0;i<N;i++)DM[i*N+i]=0;
+DT.forEach(([i,j,d])=>{DM[i*N+j]=d;DM[j*N+i]=d;});
 const $=id=>document.getElementById(id);
 const nf=(n,d=0)=>Number(n).toLocaleString('de-DE',{minimumFractionDigits:d,maximumFractionDigits:d});
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const LS='sc_fracht_v1';
-const SYS=[...new Set(T.map(t=>t.s))].sort();
+const LS='sc_fracht_v2';
+const SYS=[...new Set(T.map(t=>t.s))].sort((a,b)=>['Stanton','Pyro','Nyx'].indexOf(a)-['Stanton','Pyro','Nyx'].indexOf(b));
 
 // ---- Oberfläche -------------------------------------------------------
 $('cl').innerHTML=C.map(c=>`<option value="${esc(c.n)}">`).join('');
-$('sysbox').innerHTML='<b>Systeme:</b> '+SYS.map(s=>`<label><input type="checkbox" class="sy" value="${esc(s)}" checked> ${esc(s)}</label>`).join('');
+$('os').innerHTML=SYS.map(s=>`<option>${esc(s)}</option>`).join('');
+function fillStart(sel){
+  const sys=$('os').value;
+  const bodies=[...new Set(PL.filter(p=>p.s===sys&&p.b).map(p=>p.b))].sort((a,b)=>a.localeCompare(b,'de'));
+  const places=PL.map((p,i)=>[p,i]).filter(([p])=>p.s===sys).sort((a,b)=>a[0].pl.localeCompare(b[0].pl,'de'));
+  $('st').innerHTML='<option value="">(kein Startpunkt)</option>'
+    +'<optgroup label="Himmelskörper">'+bodies.map(b=>`<option value="b:${esc(b)}">${esc(b)}</option>`).join('')+'</optgroup>'
+    +'<optgroup label="Stationen, Städte, Außenposten">'+places.map(([p,i])=>`<option value="p:${i}">${esc(p.pl)}</option>`).join('')+'</optgroup>';
+  if(sel&&[...$('st').options].some(o=>o.value===sel))$('st').value=sel;
+}
+fillStart();
 function addRow(name='',scu=''){
   const d=document.createElement('div');d.className='row';
   d.innerHTML=`<input type="text" class="cn" list="cl" placeholder="Ware (z. B. Agricium)" value="${esc(name)}"><input type="number" class="cs" min="0" step="1" placeholder="SCU" value="${esc(scu)}"><button type="button" class="x" title="Zeile entfernen">✕</button>`;
@@ -100,11 +121,11 @@ function addRow(name='',scu=''){
 }
 $('add').onclick=()=>{addRow();};
 $('clr').onclick=()=>{$('rows').innerHTML='';addRow();schedule();};
-['od','oi','oa'].forEach(i=>$(i).addEventListener('input',schedule));
-document.addEventListener('input',e=>{if(e.target.matches('.cn,.cs,.sy'))schedule();});
+$('os').addEventListener('input',()=>{fillStart();schedule();});
+['od','oi','oa','oc','st'].forEach(i=>$(i).addEventListener('input',schedule));
+document.addEventListener('input',e=>{if(e.target.matches('.cn,.cs'))schedule();});
 
-function getOpts(){const sys={};document.querySelectorAll('.sy').forEach(c=>sys[c.value]=c.checked);
-  return {sys,demand:$('od').checked,illegal:$('oi').checked,age:+$('oa').value};}
+function getOpts(){return {sys:$('os').value,demand:$('od').checked,illegal:$('oi').checked,age:+$('oa').value,cost:Math.max(0,+$('oc').value||0),start:$('st').value};}
 function getNeed(){const need={};let bad=false;
   document.querySelectorAll('#rows .row').forEach(r=>{const n=r.querySelector('.cn'),s=r.querySelector('.cs');
     const nm=n.value.trim().toLowerCase(),q=parseFloat(s.value);
@@ -115,27 +136,29 @@ function getNeed(){const need={};let bad=false;
     if(!(q>0))return;
     need[c.id]=(need[c.id]||0)+q;});
   return {need,bad};}
-function save(){try{localStorage.setItem(LS,JSON.stringify({rows:[...document.querySelectorAll('#rows .row')].map(r=>[r.querySelector('.cn').value,r.querySelector('.cs').value]),
-  od:$('od').checked,oi:$('oi').checked,oa:$('oa').value,sys:getOpts().sys}));}catch(e){}}
+function save(){try{const o=getOpts();localStorage.setItem(LS,JSON.stringify({rows:[...document.querySelectorAll('#rows .row')].map(r=>[r.querySelector('.cn').value,r.querySelector('.cs').value]),
+  od:o.demand,oi:o.illegal,oa:$('oa').value,os:o.sys,st:o.start,oc:$('oc').value}));}catch(e){}}
 function load(){try{const s=JSON.parse(localStorage.getItem(LS)||'null');if(!s)return false;
   (s.rows||[]).forEach(r=>addRow(r[0],r[1]));$('od').checked=s.od!==false;$('oi').checked=!!s.oi;if(s.oa!=null)$('oa').value=s.oa;
-  document.querySelectorAll('.sy').forEach(c=>{if(s.sys&&c.value in s.sys)c.checked=s.sys[c.value];});return true;}catch(e){return false;}}
+  if(s.oc!=null&&s.oc!=='')$('oc').value=s.oc;
+  if(s.os&&SYS.includes(s.os))$('os').value=s.os;
+  fillStart(s.st);return true;}catch(e){return false;}}
 let timer=null;function schedule(){clearTimeout(timer);timer=setTimeout(()=>{save();compute();},250);}
 
 // ---- Rechenlogik ------------------------------------------------------
-// off[cid] = Map(ortsschluessel -> bestes Angebot {tid, price, cap, est, mod}); price in aUEC je SCU, cap = SCU-Nachfrage
+// off[cid] = Map(ortsindex -> bestes Angebot {tid, price, cap, est, mod}); price in aUEC je SCU, cap = SCU-Nachfrage
 function buildOffers(o,need){
   const now=Date.now()/1000,res={};
   for(const cid in need)res[cid]=new Map();
   for(const [tid,cid,price,scu,avg,st,mod] of P){
     if(!(cid in need))continue;
-    const t=TM[tid];if(!t||!o.sys[t.s])continue;
+    const t=TM[tid];if(!t||t.s!==o.sys)continue;
     if(!o.illegal&&(t.nqa||CM[cid].il))continue;
     if(o.age&&now-mod>o.age*86400)continue;
     let cap=Infinity,est=false;
     if(o.demand){if(st===7)continue;if(scu>0)cap=scu;else{est=true;if(avg>0)cap=avg;}}
-    const m=res[cid],cur=m.get(t.k);
-    if(!cur||price>cur.price)m.set(t.k,{tid,price,cap,est,mod});
+    const m=res[cid],cur=m.get(t.pi);
+    if(!cur||price>cur.price)m.set(t.pi,{tid,price,cap,est,mod});
   }
   return res;
 }
@@ -159,26 +182,64 @@ function combos(arr,k,cb,start=0,cur=[]){
   if(cur.length===k){cb(cur);return;}
   for(let i=start;i<arr.length;i++){cur.push(arr[i]);combos(arr,k,cb,i+1,cur);cur.pop();}
 }
-function candidates(need,off){
+function perms(a){if(a.length<=1)return [a.slice()];const out=[];a.forEach((x,i)=>perms(a.filter((_,j)=>j!==i)).forEach(p=>out.push([x,...p])));return out;}
+// Startvektor: Entfernung vom Startpunkt zu jedem Ort (-1 = unbekannt); null = kein Startpunkt
+function startVec(o){
+  if(!o.start)return null;
+  const v=new Float32Array(N).fill(-1);
+  if(o.start.startsWith('p:')){const i=+o.start.slice(2);for(let j=0;j<N;j++)v[j]=DM[i*N+j];}
+  else{const b=o.start.slice(2);const qs=[];PL.forEach((p,i)=>{if(p.s===o.sys&&p.b===b)qs.push(i);});
+    for(let j=0;j<N;j++){let m=-1;for(const q of qs){const d=DM[q*N+j];if(d>=0&&(m<0||d<m))m=d;}v[j]=m;}}
+  return v;
+}
+function pathDist(order,d0){
+  let tot=0,prev=-1;
+  for(const p of order){const d=prev<0?(d0?d0[p]:0):DM[prev*N+p];if(d<0)return -1;tot+=d;prev=p;}
+  return tot;
+}
+function bestRoute(S,d0){
+  let best=null;
+  for(const order of perms(S)){const d=pathDist(order,d0);if(d>=0&&(!best||d<best.dist))best={order,dist:d};}
+  return best;
+}
+function candidates(need,off,o,d0){
   const set=new Set(),all=new Set();
   for(const cid in need){
-    const arr=[...off[cid].entries()].sort((a,b)=>b[1].price-a[1].price);
+    const arr=[...off[cid].entries()].map(([pk,x])=>{
+      const v=x.price*Math.min(need[cid],x.cap)-(o.cost>0&&d0&&d0[pk]>=0?o.cost*d0[pk]:0);return [pk,v];}).sort((a,b)=>b[1]-a[1]);
     arr.slice(0,15).forEach(([pk])=>set.add(pk));
     arr.forEach(([pk])=>all.add(pk));
   }
-  [...all].map(pk=>[pk,evalSet([pk],need,off,false)]).sort((a,b)=>b[1]-a[1]).slice(0,40).forEach(([pk])=>set.add(pk));
+  [...all].map(pk=>{const r=evalSet([pk],need,off,false);const d=o.cost>0&&d0?d0[pk]:0;return [pk,d<0?-Infinity:r-o.cost*(d||0)];})
+    .sort((a,b)=>b[1]-a[1]).slice(0,40).forEach(([pk])=>set.add(pk));
   return {cands:[...set],all:[...all]};
 }
-function bestSet(k,cands,need,off){
-  const kk=Math.min(k,cands.length);let bestR=-1,bestS=null;
-  combos(cands,kk,S=>{const r=evalSet(S,need,off,false);if(r>bestR){bestR=r;bestS=S.slice();}});
-  return bestS;
+// bestes Bündel mit genau k Orten (alle besucht); Ziel: Erlös minus Streckenkosten
+function evalUsed(S,need,off){
+  let rev=0;const used=new Set();
+  for(const cid in need){
+    const list=[];
+    for(const pk of S){const o=off[cid].get(pk);if(o)list.push({pk,price:o.price,cap:o.cap});}
+    list.sort((a,b)=>b.price-a.price);
+    let rest=need[cid];
+    for(const o of list){if(rest<=0)break;const take=Math.min(rest,o.cap);if(!(take>0))continue;rev+=take*o.price;rest-=take;used.add(o.pk);}
+  }
+  return {rev,used:[...used]};
 }
-// Theoretisches Maximum: jede Ware an den jeweils besten Orten (beliebig viele Stopps)
+function bestExact(k,cands,need,off,o,d0){
+  const kk=Math.min(k,cands.length);let bestV=-Infinity,bestS=null;
+  combos(cands,kk,S=>{
+    const e=evalUsed(S,need,off);let v=e.rev;
+    if(o.cost>0){const r=bestRoute(e.used,d0);if(!r)return;v=e.rev-o.cost*r.dist;}
+    if(v>bestV){bestV=v;bestS=S.slice();}
+  });
+  return bestS?{S:bestS,v:bestV}:null;
+}
+// Theoretisches Maximum: jede Ware an den jeweils besten Orten (beliebig viele Stopps, ohne Strecke)
 function maxPlan(need,off){
   let rev=0;const places=new Set();
   for(const cid in need){
-    const list=[...off[cid].entries()].map(([pk,o])=>({pk,price:o.price,cap:o.cap,o}));
+    const list=[...off[cid].entries()].map(([pk,x])=>({pk,price:x.price,cap:x.cap,o:x}));
     const f=fill(list,need[cid]);rev+=f.rev;f.asg.forEach(a=>places.add(a.o.pk));
   }
   return {rev,stops:places.size};
@@ -186,18 +247,20 @@ function maxPlan(need,off){
 
 // ---- Darstellung ------------------------------------------------------
 const ageTxt=m=>{const d=Math.floor((Date.now()/1000-m)/86400);return d<=0?'heute':d===1?'vor 1 Tag':`vor ${d} Tagen`;};
-function stopsHtml(plan,need){
+function stopsHtml(plan,order,legs,o){
   const byPlace={};
   plan.det.forEach(({cid,f})=>f.asg.forEach(a=>{(byPlace[a.o.pk]=byPlace[a.o.pk]||[]).push({cid,take:a.take,o:a.o.o});}));
-  const stops=Object.entries(byPlace).map(([pk,lines])=>({pk,lines,rev:lines.reduce((s,l)=>s+l.take*l.o.price,0)})).sort((a,b)=>b.rev-a.rev);
-  return stops.map(s=>{
-    const t0=TM[s.lines[0].o.tid];
-    const terms=[...new Set(s.lines.map(l=>TM[l.o.tid].tn))].join(', ');
-    return `<div class="stop"><div class="sname">${esc(t0.pl)} <span class="sloc">· ${esc(t0.lc)} · Terminal: ${esc(terms)}</span></div>`+
-      s.lines.map(l=>`<div class="line"><span>${esc(CM[l.cid].n)}: ${nf(l.take,l.take%1?1:0)} SCU × ${nf(l.o.price)} aUEC`+
+  const seq=order&&order.length?order:Object.keys(byPlace).map(Number).sort((a,b)=>sum(byPlace[b])-sum(byPlace[a]));
+  function sum(lines){return lines.reduce((s,l)=>s+l.take*l.o.price,0);}
+  return seq.filter(pk=>byPlace[pk]).map((pk,i)=>{
+    const lines=byPlace[pk],pl=PL[pk];
+    const terms=[...new Set(lines.map(l=>TM[l.o.tid].tn))].join(', ');
+    const leg=legs&&legs[i]!=null&&legs[i]>=0?` · <b>${nf(legs[i])} Gm</b> ${i===0?(o.start?'vom Startpunkt':''):'vom vorherigen Stopp'}`:'';
+    return `<div class="stop"><div class="sname">${order&&order.length?`${i+1}. `:''}${esc(pl.pl)} <span class="sloc">· ${esc(pl.lc)} · Terminal: ${esc(terms)}${leg}</span></div>`+
+      lines.map(l=>`<div class="line"><span>${esc(CM[l.cid].n)}: ${nf(l.take,l.take%1?1:0)} SCU × ${nf(l.o.price)} aUEC`+
         `${l.o.est?' <span class="note">· Nachfrage geschätzt</span>':''}${(Date.now()/1000-l.o.mod)>7*86400?` <span class="note">· Preis von ${ageTxt(l.o.mod)}</span>`:''}</span>`+
         `<span class="a">${nf(l.take*l.o.price)} aUEC</span></div>`).join('')+
-      `<div class="line" style="font-weight:600"><span>Summe an diesem Stopp</span><span class="a">${nf(s.rev)} aUEC</span></div></div>`;
+      `<div class="line" style="font-weight:600"><span>Summe an diesem Stopp</span><span class="a">${nf(sum(lines))} aUEC</span></div></div>`;
   }).join('');
 }
 function compute(){
@@ -208,37 +271,60 @@ function compute(){
   if(!ids.length){out.innerHTML='<div class="card"><div class="empty">Gib oben mindestens eine Ware und eine SCU-Menge ein.</div></div>';return;}
   const off=buildOffers(o,need);
   const warns=[];
-  const missing=ids.filter(c=>off[c].size===0);
-  missing.forEach(c=>warns.push(`Für ${esc(CM[c].n)} gibt es mit den aktuellen Einstellungen keinen Abnehmer.`));
+  ids.filter(c=>off[c].size===0).forEach(c=>warns.push(`Für ${esc(CM[c].n)} gibt es in ${esc(o.sys)} mit den aktuellen Einstellungen keinen Abnehmer.`));
   const active=ids.filter(c=>off[c].size>0);
   const need2={};active.forEach(c=>need2[c]=need[c]);
   let html=bad?'<div class="warn">Mindestens ein Warenname wird nicht erkannt (rot markiert). Bitte aus der Vorschlagsliste wählen.</div>':'';
-  html+=warns.map(w=>`<div class="warn">${w}</div>`).join('');
-  if(!active.length){out.innerHTML=html;return;}
-  const {cands,all}=candidates(need2,off);
+  if(!active.length){out.innerHTML=html+warns.map(w=>`<div class="warn">${w}</div>`).join('');return;}
+  const d0=startVec(o);
+  let oo=o;
+  // Entfernungsdaten da? Sonst ohne Streckenkosten rechnen und das sagen
+  const anyDist=DM.some(v=>v>0);
+  if(o.cost>0&&!anyDist){warns.push('Die Entfernungsdaten sind noch nicht geladen, deshalb zählt vorerst nur der Erlös.');oo={...o,cost:0};}
+  let {cands,all}=candidates(need2,off,oo,d0);
+  let exact=[1,2,3].map(k=>k>all.length&&k>1?null:bestExact(k,cands,need2,off,oo,d0));
+  if(oo.cost>0&&exact.every(x=>!x)){
+    warns.push('Für diese Orte fehlen Entfernungen (noch nicht alle geladen). Es zählt vorerst nur der Erlös.');
+    oo={...o,cost:0};({cands,all}=candidates(need2,off,oo,d0));
+    exact=[1,2,3].map(k=>k>all.length&&k>1?null:bestExact(k,cands,need2,off,oo,d0));
+  }
   const mx=maxPlan(need2,off);
   const cards=[];
-  for(const k of [1,2,3]){
-    if(k>all.length&&k>1)break;
-    const S=bestSet(k,cands,need2,off);const plan=evalSet(S,need2,off,true);
-    const used=new Set();plan.det.forEach(d=>d.f.asg.forEach(a=>used.add(a.o.pk)));
-    cards.push({k,plan,used:used.size});
+  for(let k=1;k<=3;k++){
+    const pool=exact.slice(0,k).filter(Boolean);
+    if(!pool.length)continue;
+    const pick=pool.reduce((a,b)=>b.v>a.v?b:a);
+    const plan=evalSet(pick.S,need2,off,true);
+    const usedSet=new Set();plan.det.forEach(d=>d.f.asg.forEach(a=>usedSet.add(a.o.pk)));
+    const used=[...usedSet];
+    const r=bestRoute(used,d0);
+    const order=r?r.order:null,dist=r?r.dist:null;
+    const legs=order?order.map((p,i)=>i===0?(d0?d0[p]:null):DM[order[i-1]*N+p]):null;
+    const cost=oo.cost>0&&dist!=null?oo.cost*dist:0;
+    cards.push({k,plan,used,order,dist,legs,cost,net:plan.rev-cost,sig:[...used].sort((a,b)=>a-b).join()});
   }
-  // gleiche Ergebnisse (ein Stopp reicht schon) nicht doppelt zeigen
-  const shown=[];cards.forEach(c=>{const last=shown[shown.length-1];if(last&&Math.abs(last.plan.rev-c.plan.rev)<0.5&&c.used<=last.used)return;shown.push(c);});
+  const shown=[];cards.forEach(c=>{if(shown.length&&shown[shown.length-1].sig===c.sig)return;shown.push(c);});
+  const bestNet=Math.max(...shown.map(c=>c.net));
+  html+=warns.map(w=>`<div class="warn">${w}</div>`).join('');
+  const useCost=oo.cost>0;
   shown.forEach((c,i)=>{
-    const pct=mx.rev>0?c.plan.rev/mx.rev*100:100;
-    const gain=i>0?c.plan.rev-shown[i-1].plan.rev:null;
     const unsold=c.plan.det.filter(d=>d.f.rest>0.0001).map(d=>`${nf(d.f.rest,d.f.rest%1?1:0)} SCU ${esc(CM[d.cid].n)}`);
-    html+=`<div class="card"><div class="chead"><div class="ctitle">${c.used} Stopp${c.used>1?'s':''}${i===0?' · bester Einzelstopp':''}</div><div class="total">${nf(c.plan.rev)} aUEC</div></div>`+
-      `<div class="meta">${nf(pct,1)} % des theoretischen Maximums${gain!=null?` · ${gain>=0?'+':''}${nf(gain)} aUEC gegenüber ${shown[i-1].used} Stopp${shown[i-1].used>1?'s':''}`:''}</div>`+
+    const rec=useCost&&shown.length>1&&c.net===bestNet;
+    const pct=mx.rev>0?c.plan.rev/mx.rev*100:100;
+    const meta=[`Erlös ${nf(c.plan.rev)} aUEC (${nf(pct,1)} % des Maximums)`];
+    if(c.dist!=null)meta.push(`Strecke ${nf(c.dist)} Gm${o.start?' ab Startpunkt':''}`);
+    if(useCost&&c.dist!=null)meta.push(`Streckenkosten ${nf(c.cost)} aUEC`);
+    else if(o.cost>0&&c.dist==null)meta.push('Entfernung unbekannt');
+    html+=`<div class="card${rec?' best':''}"><div class="chead"><div class="ctitle">${c.used.length} Stopp${c.used.length>1?'s':''}${rec?' · Empfehlung':''}${i===0&&!rec?' · wenigste Stopps':''}</div>`+
+      `<div class="total">${nf(useCost&&c.dist!=null?c.net:c.plan.rev)} aUEC${useCost&&c.dist!=null?' <span class="sloc">netto</span>':''}</div></div>`+
+      `<div class="meta">${meta.join(' · ')}</div>`+
       (unsold.length?`<div class="warn">Nicht verkauft (keine ausreichende Nachfrage an diesen Stopps): ${unsold.join(', ')}</div>`:'')+
-      stopsHtml(c.plan,need2)+`</div>`;
+      stopsHtml(c.plan,c.order,c.legs,o)+`</div>`;
   });
-  const maxPlanFull=(()=>{const det=[];for(const cid in need2){const list=[...off[cid].entries()].map(([pk,x])=>({pk,price:x.price,cap:x.cap,o:x}));det.push({cid,f:fill(list,need2[cid])});}return {det};})();
+  const fullPlan={det:[]};for(const cid in need2){const list=[...off[cid].entries()].map(([pk,x])=>({pk,price:x.price,cap:x.cap,o:x}));fullPlan.det.push({cid,f:fill(list,need2[cid])});}
   html+=`<div class="card"><div class="chead"><div class="ctitle">Theoretisches Maximum</div><div class="total" style="color:#4a5a70">${nf(mx.rev)} aUEC</div></div>`+
-    `<div class="meta">Jede Ware am jeweils besten Ort verkauft: ${mx.stops} Stopp${mx.stops>1?'s':''}. Dient nur als Vergleich.</div>`+
-    `<details><summary>Stopps anzeigen</summary>${stopsHtml(maxPlanFull,need2)}</details></div>`;
+    `<div class="meta">Jede Ware am jeweils besten Ort verkauft: ${mx.stops} Stopp${mx.stops>1?'s':''}, ohne Rücksicht auf die Strecke. Dient nur als Vergleich.</div>`+
+    `<details><summary>Stopps anzeigen</summary>${stopsHtml(fullPlan,null,null,o)}</details></div>`;
   out.innerHTML=html;
 }
 if(!load())addRow('','');
@@ -250,19 +336,19 @@ compute();
 '''
 
 
-def _place(t):
-    name = t["space_station"] or t["city"] or t["outpost"] or t["nickname"] or t["displayname"] or t["name"] or "?"
-    return name
-
-
 def build(con, target):
-    terms = []
-    for r in con.execute("SELECT * FROM uex_terminals"):
+    import uex
+    place_idx, places, terms = {}, [], []
+    for r in con.execute("SELECT * FROM uex_terminals ORDER BY id"):
         t = dict(r)
-        place = _place(t)
-        loc = " › ".join(x for x in (t["star_system"], t["planet"], t["moon"]) if x)
+        name = uex.place_name(t)
+        key = (t["star_system"], name)
+        if key not in place_idx:
+            place_idx[key] = len(places)
+            places.append({"pl": name, "s": t["star_system"], "b": t["moon"] or t["planet"] or "",
+                           "lc": " › ".join(x for x in (t["star_system"], t["planet"], t["moon"]) if x)})
         terms.append({"id": t["id"], "tn": t["nickname"] or t["name"] or str(t["id"]), "s": t["star_system"],
-                      "k": f"{t['star_system']}|{place}", "pl": place, "lc": loc, "nqa": t["is_nqa"]})
+                      "pi": place_idx[key], "nqa": t["is_nqa"]})
     used_c = {r[0] for r in con.execute("SELECT DISTINCT id_commodity FROM uex_prices")}
     coms = [{"id": r["id"], "n": r["name"], "k": r["kind"] or "", "il": r["is_illegal"]}
             for r in con.execute("SELECT * FROM uex_commodities ORDER BY lower(name)") if r["id"] in used_c]
@@ -272,11 +358,24 @@ def build(con, target):
     newest = max((p[6] for p in prices), default=0)
     stand = dt.datetime.fromtimestamp(newest).strftime("%d.%m.%Y %H:%M") if newest else "unbekannt"
 
+    # Entfernungen: Referenz-Terminal je Ort -> Ortsindex
+    rep_to_pi = {tid: place_idx[key] for key, tid in uex.place_reps(con).items() if key in place_idx}
+    dist, needed = [], 0
+    for r in con.execute("SELECT id_a, id_b, gm FROM uex_distances WHERE gm IS NOT NULL"):
+        if r["id_a"] in rep_to_pi and r["id_b"] in rep_to_pi:
+            dist.append([rep_to_pi[r["id_a"]], rep_to_pi[r["id_b"]], round(r["gm"], 1)])
+    try:
+        needed = len(uex._needed_pairs(con))
+    except Exception:  # noqa: BLE001
+        needed = 0
+    dtxt = f"{len(dist)} von {needed} Ortspaaren" if needed else "noch keine"
+
     def js(x):
         return json.dumps(x, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
 
-    html = (PAGE.replace("__TERMINALS__", js(terms)).replace("__COMMODITIES__", js(coms))
-            .replace("__PRICES__", js(prices)).replace("__UEXSTAND__", stand)
+    html = (PAGE.replace("__TERMINALS__", js(terms)).replace("__PLACES__", js(places))
+            .replace("__COMMODITIES__", js(coms)).replace("__PRICES__", js(prices)).replace("__DISTS__", js(dist))
+            .replace("__UEXSTAND__", stand).replace("__DTXT__", dtxt)
             .replace("__STAND__", dt.datetime.now().strftime("%d.%m.%Y %H:%M")))
     os.makedirs(os.path.dirname(target), exist_ok=True)
     tmp = target + ".tmp"

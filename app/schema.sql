@@ -98,6 +98,12 @@ CREATE TABLE IF NOT EXISTS uex_prices (
     PRIMARY KEY (id_terminal, id_commodity)
 );
 
+-- Entfernungen zwischen zwei Terminals (UEX-Schaetzung in Gigametern, id_a < id_b); gm NULL = keine Angabe
+CREATE TABLE IF NOT EXISTS uex_distances (
+    id_a INTEGER, id_b INTEGER, gm REAL, fetched_at INTEGER,
+    PRIMARY KEY (id_a, id_b)
+);
+
 -- Fertige Sicht, entspricht der Excel-Liste
 DROP VIEW IF EXISTS ship_prices;
 CREATE VIEW ship_prices AS

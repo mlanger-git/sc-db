@@ -22,3 +22,11 @@ und ggf. eine weitere Seite in `app/webpage.py`. Die Datenbank bleibt dieselbe D
 Tabellen `uex_*`, `app/tradepage.py` erzeugt daraus `SC_Frachtrechner.html`. Die Preise werden alle
 `TRADE_INTERVAL_HOURS` (Standard 3) aktualisiert, alles andere weiterhin alle `UPDATE_INTERVAL_HOURS`.
 Kachel für `index.php`: `kachel_frachtrechner.html`.
+
+### Entfernungen und Startpunkt
+Die Seite fragt einen Startpunkt (Himmelskörper oder Ort) und Streckenkosten (aUEC je Gigameter) ab. Sie wählt unter
+1 bis 3 Stopps die Bündel mit dem besten Erlös abzüglich Streckenkosten und zeigt die Reihenfolge samt Teilstrecken.
+Die Ortsentfernungen (UEX `terminals_distances`, innerhalb eines Systems) liegen in `uex_distances` und werden je Lauf
+bis zu `UEX_DIST_PER_RUN` (Standard 500) nachgeladen, bei Fehlern oder Limit läuft ein neuer Versuch nach 10 Minuten.
+Die erste Befüllung braucht deshalb mehrere Läufe; solange Paare fehlen, rechnet die Seite mit den vorhandenen
+Entfernungen oder, wenn keine da sind, nur mit dem Erlös. Log-Zeile: `uex-dist: OK - N Entfernungen geladen, M offen`.

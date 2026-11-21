@@ -15,6 +15,13 @@ UEX_TOKEN = os.environ.get("UEX_TOKEN", "")
 SYSTEMS = ("Stanton", "Pyro", "Nyx")
 MIN_TERMINALS = 20
 MIN_PRICES = 200
+DIST_PER_RUN = int(os.environ.get("UEX_DIST_PER_RUN", "500"))   # Abfragen je Lauf (UEX-Limit: 120 pro Minute)
+DIST_PAUSE = 0.55                                                # Sekunden zwischen zwei Abfragen
+DIST_MAX_AGE_DAYS = 90
+
+
+class RateLimit(Exception):
+    pass
 
 
 def _headers():
@@ -109,3 +116,93 @@ def update(con):
         con.executemany("INSERT INTO uex_prices VALUES (?,?,?,?,?,?,?,?,?,?)", price_rows)
         con.execute("INSERT OR REPLACE INTO settings(key, value) VALUES ('uex_updated_at', ?)", (ts,))
     return f"{len(term_rows)} Terminals, {len(com_rows)} Waren, {len(price_rows)} Verkaufspreise"
+
+
+def place_name(t):
+    """Name des Ortes (Station, Stadt, Aussenposten) eines Terminals; t ist ein Dict oder eine sqlite3.Row."""
+    return t["space_station"] or t["city"] or t["outpost"] or t["nickname"] or t["displayname"] or t["name"] or "?"
+
+
+def place_reps(con):
+    """Je Ort (System, Name) ein Referenz-Terminal (kleinste ID) unter den Terminals mit Verkaufspreisen."""
+    reps = {}
+    for r in con.execute("SELECT * FROM uex_terminals WHERE id IN (SELECT DISTINCT id_terminal FROM uex_prices) ORDER BY id"):
+        reps.setdefault((r["star_system"], place_name(r)), r["id"])
+    return reps
+
+
+def _needed_pairs(con):
+    by_system = {}
+    for (system, _name), tid in place_reps(con).items():
+        by_system.setdefault(system, []).append(tid)
+    pairs = []
+    for system in SYSTEMS:
+        ids = sorted(by_system.get(system, []))
+        pairs += [(a, b) for i, a in enumerate(ids) for b in ids[i + 1:]]
+    return pairs
+
+
+def distance_todo(con):
+    """Anzahl der Ortspaare ohne (oder mit veralteter) Entfernung."""
+    cutoff = int(time.time()) - DIST_MAX_AGE_DAYS * 86400
+    have = {(r[0], r[1]) for r in con.execute("SELECT id_a, id_b FROM uex_distances WHERE fetched_at >= ?", (cutoff,))}
+    return sum(1 for p in _needed_pairs(con) if p not in have)
+
+
+def fetch_distance(a, b):
+    """Entfernung in Gm zwischen zwei Terminals; None, wenn UEX keine Angabe hat."""
+    last = None
+    for attempt in range(3):
+        try:
+            r = requests.get(f"{UEX_API}/terminals_distances", params={"id_terminal_origin": a, "id_terminal_destination": b},
+                             headers=_headers(), timeout=60)
+            if r.status_code == 429:
+                raise RateLimit("HTTP 429")
+            r.raise_for_status()
+            j = r.json()
+            status = str(j.get("status"))
+            if "limit" in status:
+                raise RateLimit(status)
+            if status != "ok":
+                return None
+            data = j.get("data")
+            if isinstance(data, dict) and data.get("distance") not in (None, ""):
+                return float(data["distance"])
+            return None
+        except RateLimit:
+            raise
+        except Exception as e:  # noqa: BLE001
+            last = e
+            time.sleep(3 * (attempt + 1))
+    raise last
+
+
+def update_distances(con, limit=None):
+    """Holt fehlende Ortsentfernungen (je Lauf hoechstens `limit`, die Rest folgt im naechsten Lauf)."""
+    limit = DIST_PER_RUN if limit is None else limit
+    cutoff = int(time.time()) - DIST_MAX_AGE_DAYS * 86400
+    have = {(r[0], r[1]) for r in con.execute("SELECT id_a, id_b FROM uex_distances WHERE fetched_at >= ?", (cutoff,))}
+    todo = [p for p in _needed_pairs(con) if p not in have]
+    done = fails = 0
+    stopped = ""
+    for a, b in todo[:limit]:
+        try:
+            gm = fetch_distance(a, b)
+        except RateLimit as e:
+            stopped = f", Abbruch wegen Limit ({e})"
+            break
+        except Exception as e:  # noqa: BLE001
+            fails += 1
+            if fails >= 5:
+                stopped = f", Abbruch nach 5 Fehlern ({e})"
+                break
+            continue
+        fails = 0
+        con.execute("INSERT OR REPLACE INTO uex_distances(id_a, id_b, gm, fetched_at) VALUES (?,?,?,?)",
+                    (a, b, gm, int(time.time())))
+        done += 1
+        if done % 50 == 0:
+            con.commit()
+        time.sleep(DIST_PAUSE)
+    con.commit()
+    return f"{done} Entfernungen geladen, {max(len(todo) - done, 0)} offen{stopped}"

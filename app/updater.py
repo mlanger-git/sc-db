@@ -423,7 +423,22 @@ def run_once():
         log(f"Frachtrechner: {n} Preise -> {TRADE_PATH}")
     except Exception as e:  # noqa: BLE001
         log(f"frachtrechner: FEHLER - {e}")
+    _distances(con)
     con.close()
+
+
+def _distances(con):
+    """Fehlende Entfernungen nachladen und den Frachtrechner danach neu erzeugen."""
+    import uex
+    import tradepage
+    try:
+        msg = uex.update_distances(con)
+        log(f"uex-dist: OK - {msg}")
+        log_run(con, "uex-dist", "ok", msg)
+        tradepage.build(con, TRADE_PATH)
+    except Exception as e:  # noqa: BLE001
+        log(f"uex-dist: FEHLER - {e}")
+        log_run(con, "uex-dist", "fehler", str(e))
 
 
 def run_trade():
@@ -444,6 +459,7 @@ def run_trade():
         log(f"Frachtrechner: {n} Preise -> {TRADE_PATH}")
     except Exception as e:  # noqa: BLE001
         log(f"frachtrechner: FEHLER - {e}")
+    _distances(con)
     con.close()
 
 
@@ -505,15 +521,34 @@ def main():
     elif cmd == "status":
         status()
     elif cmd == "loop":
-        last_full = 0.0
+        last_full = last_trade = 0.0
         while True:
-            if time.time() - last_full >= INTERVAL_HOURS * 3600 - 60:
+            now = time.time()
+            if now - last_full >= INTERVAL_HOURS * 3600 - 60:
                 run_once()
-                last_full = time.time()
-            else:
+                last_full = last_trade = time.time()
+            elif now - last_trade >= TRADE_INTERVAL_HOURS * 3600 - 60:
                 run_trade()
-            log(f"naechste Preisaktualisierung in {TRADE_INTERVAL_HOURS:g} Stunden")
-            time.sleep(TRADE_INTERVAL_HOURS * 3600)
+                last_trade = time.time()
+            else:
+                con = connect()
+                init_db(con)
+                _distances(con)
+                con.close()
+            try:
+                import uex
+                con = connect()
+                open_pairs = uex.distance_todo(con)
+                con.close()
+            except Exception:  # noqa: BLE001
+                open_pairs = 0
+            if open_pairs:
+                log(f"{open_pairs} Entfernungen offen, naechster Lauf in 10 Minuten")
+                time.sleep(600)
+            else:
+                wait = min(last_trade + TRADE_INTERVAL_HOURS * 3600, last_full + INTERVAL_HOURS * 3600) - time.time()
+                log(f"naechste Aktualisierung in {max(wait, 60) / 3600:.1f} Stunden")
+                time.sleep(max(wait, 60))
     else:
         print(__doc__)
         sys.exit(1)
