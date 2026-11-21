@@ -64,9 +64,10 @@ PAGE = r'''<!DOCTYPE html>
 <div class="panel">
   <h2>Einstellungen</h2>
   <div class="opts">
-    <label>System <select id="os"></select></label>
+    <span class="syl">Systeme <span id="os"></span></span>
     <label>Startpunkt <select id="st"></select></label>
     <label>Streckenkosten <input type="number" id="oc" min="0" step="500" value="2000" style="width:100px"> aUEC je Gm</label>
+    <label>Systemwechsel zählt wie <input type="number" id="oj" min="0" step="10" value="100" style="width:80px"> Gm</label>
   </div>
   <div class="opts" style="margin-top:10px">
     <label><input type="checkbox" id="od" checked> Nachfrage der Terminals berücksichtigen</label>
@@ -76,7 +77,7 @@ PAGE = r'''<!DOCTYPE html>
   </div>
   <div class="hint">Als Startpunkt kannst du einen Himmelskörper (z. B. ArcCorp) oder einen Ort wählen. Die Route läuft vom Startpunkt über die Verkaufsstopps, ein Rückweg ist nicht eingerechnet.
   Die <b>Streckenkosten</b> sagen, wie viel dir ein Gigameter Flugstrecke wert ist (Zeit, Treibstoff, Risiko). Je höher der Wert, desto eher wählt der Rechner nahe Stopps, bei 0 zählt nur der Erlös.
-  Ein „Stopp“ ist ein Ort (Station, Stadt oder Außenposten); mehrere Terminals am selben Ort zählen als ein Stopp. Entfernungen sind UEX-Schätzungen und gelten nur innerhalb eines Systems (Geladen: __DTXT__).</div>
+  Ein „Stopp“ ist ein Ort (Station, Stadt oder Außenposten); mehrere Terminals am selben Ort zählen als ein Stopp. Mehrere Systeme kannst du gleichzeitig anhaken; die Entfernungen innerhalb eines Systems sind UEX-Schätzungen (geladen: __DTXT__). Ein Wechsel zwischen Systemen wird pauschal mit dem Wert bei „Systemwechsel“ angesetzt.</div>
 </div>
 
 <div id="res"></div>
@@ -94,6 +95,8 @@ T.forEach(t=>TM[t.id]=t); C.forEach(c=>{CM[c.id]=c;CBN[c.n.toLowerCase()]=c;});
 const N=PL.length, DM=new Float32Array(N*N).fill(-1);
 for(let i=0;i<N;i++)DM[i*N+i]=0;
 DT.forEach(([i,j,d])=>{DM[i*N+j]=d;DM[j*N+i]=d;});
+let DMX=DM;
+function setJump(J){DMX=DM.slice();for(let i=0;i<N;i++)for(let j=0;j<N;j++)if(PL[i].s!==PL[j].s)DMX[i*N+j]=J;}
 const $=id=>document.getElementById(id);
 const nf=(n,d=0)=>Number(n).toLocaleString('de-DE',{minimumFractionDigits:d,maximumFractionDigits:d});
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
@@ -102,14 +105,18 @@ const SYS=[...new Set(T.map(t=>t.s))].sort((a,b)=>['Stanton','Pyro','Nyx'].index
 
 // ---- Oberfläche -------------------------------------------------------
 $('cl').innerHTML=C.map(c=>`<option value="${esc(c.n)}">`).join('');
-$('os').innerHTML=SYS.map(s=>`<option>${esc(s)}</option>`).join('');
+$('os').innerHTML=SYS.map((x,i)=>`<label class="sy"><input type="checkbox" value="${esc(x)}"${i===0?' checked':''}> ${esc(x)}</label>`).join(' ');
+const selSys=()=>[...document.querySelectorAll('#os input:checked')].map(i=>i.value);
 function fillStart(sel){
-  const sys=$('os').value;
-  const bodies=[...new Set(PL.filter(p=>p.s===sys&&p.b).map(p=>p.b))].sort((a,b)=>a.localeCompare(b,'de'));
-  const places=PL.map((p,i)=>[p,i]).filter(([p])=>p.s===sys).sort((a,b)=>a[0].pl.localeCompare(b[0].pl,'de'));
-  $('st').innerHTML='<option value="">(kein Startpunkt)</option>'
-    +'<optgroup label="Himmelskörper">'+bodies.map(b=>`<option value="b:${esc(b)}">${esc(b)}</option>`).join('')+'</optgroup>'
-    +'<optgroup label="Stationen, Städte, Außenposten">'+places.map(([p,i])=>`<option value="p:${i}">${esc(p.pl)}</option>`).join('')+'</optgroup>';
+  const sy=selSys(),multi=sy.length>1;let h='<option value="">(kein Startpunkt)</option>';
+  sy.forEach(sys=>{
+    const bodies=[...new Set(PL.filter(p=>p.s===sys&&p.b).map(p=>p.b))].sort((a,b)=>a.localeCompare(b,'de'));
+    const places=PL.map((p,i)=>[p,i]).filter(([p])=>p.s===sys).sort((a,b)=>a[0].pl.localeCompare(b[0].pl,'de'));
+    const pre=multi?sys+' · ':'';
+    h+=`<optgroup label="${esc(pre)}Himmelskörper">`+bodies.map(b=>`<option value="b:${esc(sys)}|${esc(b)}">${esc(b)}</option>`).join('')+'</optgroup>'
+      +`<optgroup label="${esc(pre)}Stationen, Städte, Außenposten">`+places.map(([p,i])=>`<option value="p:${i}">${esc(p.pl)}</option>`).join('')+'</optgroup>';
+  });
+  $('st').innerHTML=h;
   if(sel&&[...$('st').options].some(o=>o.value===sel))$('st').value=sel;
 }
 fillStart();
@@ -121,11 +128,11 @@ function addRow(name='',scu=''){
 }
 $('add').onclick=()=>{addRow();};
 $('clr').onclick=()=>{$('rows').innerHTML='';addRow();schedule();};
-$('os').addEventListener('input',()=>{fillStart();schedule();});
-['od','oi','oa','oc','st'].forEach(i=>$(i).addEventListener('input',schedule));
+$('os').addEventListener('change',()=>{fillStart($('st').value);schedule();});
+['od','oi','oa','oc','oj','st'].forEach(i=>$(i).addEventListener('input',schedule));
 document.addEventListener('input',e=>{if(e.target.matches('.cn,.cs'))schedule();});
 
-function getOpts(){return {sys:$('os').value,demand:$('od').checked,illegal:$('oi').checked,age:+$('oa').value,cost:Math.max(0,+$('oc').value||0),start:$('st').value};}
+function getOpts(){return {sys:selSys(),jump:Math.max(0,+$('oj').value||0),demand:$('od').checked,illegal:$('oi').checked,age:+$('oa').value,cost:Math.max(0,+$('oc').value||0),start:$('st').value};}
 function getNeed(){const need={};let bad=false;
   document.querySelectorAll('#rows .row').forEach(r=>{const n=r.querySelector('.cn'),s=r.querySelector('.cs');
     const nm=n.value.trim().toLowerCase(),q=parseFloat(s.value);
@@ -137,11 +144,13 @@ function getNeed(){const need={};let bad=false;
     need[c.id]=(need[c.id]||0)+q;});
   return {need,bad};}
 function save(){try{const o=getOpts();localStorage.setItem(LS,JSON.stringify({rows:[...document.querySelectorAll('#rows .row')].map(r=>[r.querySelector('.cn').value,r.querySelector('.cs').value]),
-  od:o.demand,oi:o.illegal,oa:$('oa').value,os:o.sys,st:o.start,oc:$('oc').value}));}catch(e){}}
+  od:o.demand,oi:o.illegal,oa:$('oa').value,os:o.sys,st:o.start,oc:$('oc').value,oj:$('oj').value}));}catch(e){}}
 function load(){try{const s=JSON.parse(localStorage.getItem(LS)||'null');if(!s)return false;
   (s.rows||[]).forEach(r=>addRow(r[0],r[1]));$('od').checked=s.od!==false;$('oi').checked=!!s.oi;if(s.oa!=null)$('oa').value=s.oa;
   if(s.oc!=null&&s.oc!=='')$('oc').value=s.oc;
-  if(s.os&&SYS.includes(s.os))$('os').value=s.os;
+  if(s.oj!=null&&s.oj!=='')$('oj').value=s.oj;
+  const ss=Array.isArray(s.os)?s.os:(s.os?[s.os]:[]);
+  if(ss.some(x=>SYS.includes(x)))document.querySelectorAll('#os input').forEach(i=>{i.checked=ss.includes(i.value);});
   fillStart(s.st);return true;}catch(e){return false;}}
 let timer=null;function schedule(){clearTimeout(timer);timer=setTimeout(()=>{save();compute();},250);}
 
@@ -152,7 +161,7 @@ function buildOffers(o,need){
   for(const cid in need)res[cid]=new Map();
   for(const [tid,cid,price,scu,avg,st,mod] of P){
     if(!(cid in need))continue;
-    const t=TM[tid];if(!t||t.s!==o.sys)continue;
+    const t=TM[tid];if(!t||!o.sys.includes(t.s))continue;
     if(!o.illegal&&(t.nqa||CM[cid].il))continue;
     if(o.age&&now-mod>o.age*86400)continue;
     let cap=Infinity,est=false;
@@ -187,14 +196,15 @@ function perms(a){if(a.length<=1)return [a.slice()];const out=[];a.forEach((x,i)
 function startVec(o){
   if(!o.start)return null;
   const v=new Float32Array(N).fill(-1);
-  if(o.start.startsWith('p:')){const i=+o.start.slice(2);for(let j=0;j<N;j++)v[j]=DM[i*N+j];}
-  else{const b=o.start.slice(2);const qs=[];PL.forEach((p,i)=>{if(p.s===o.sys&&p.b===b)qs.push(i);});
-    for(let j=0;j<N;j++){let m=-1;for(const q of qs){const d=DM[q*N+j];if(d>=0&&(m<0||d<m))m=d;}v[j]=m;}}
+  if(o.start.startsWith('p:')){const i=+o.start.slice(2);for(let j=0;j<N;j++)v[j]=DMX[i*N+j];}
+  else{const [sy,b]=o.start.slice(2).split('|');const qs=[];PL.forEach((p,i)=>{if(p.s===sy&&p.b===b)qs.push(i);});
+    for(let j=0;j<N;j++){let m=-1;for(const q of qs){const d=DMX[q*N+j];if(d>=0&&(m<0||d<m))m=d;}v[j]=m;}}
   return v;
 }
+function startSys(o){if(!o.start)return null;if(o.start.startsWith('p:'))return PL[+o.start.slice(2)].s;return o.start.slice(2).split('|')[0];}
 function pathDist(order,d0){
   let tot=0,prev=-1;
-  for(const p of order){const d=prev<0?(d0?d0[p]:0):DM[prev*N+p];if(d<0)return -1;tot+=d;prev=p;}
+  for(const p of order){const d=prev<0?(d0?d0[p]:0):DMX[prev*N+p];if(d<0)return -1;tot+=d;prev=p;}
   return tot;
 }
 function bestRoute(S,d0){
@@ -252,10 +262,12 @@ function stopsHtml(plan,order,legs,o){
   plan.det.forEach(({cid,f})=>f.asg.forEach(a=>{(byPlace[a.o.pk]=byPlace[a.o.pk]||[]).push({cid,take:a.take,o:a.o.o});}));
   const seq=order&&order.length?order:Object.keys(byPlace).map(Number).sort((a,b)=>sum(byPlace[b])-sum(byPlace[a]));
   function sum(lines){return lines.reduce((s,l)=>s+l.take*l.o.price,0);}
-  return seq.filter(pk=>byPlace[pk]).map((pk,i)=>{
+  const seqF=seq.filter(pk=>byPlace[pk]);
+  return seqF.map((pk,i)=>{
     const lines=byPlace[pk].slice().sort((a,b)=>b.take*b.o.price-a.take*a.o.price),pl=PL[pk];
     const terms=[...new Set(lines.map(l=>TM[l.o.tid].tn))].join(', ');
-    const leg=legs&&legs[i]!=null&&legs[i]>=0?` · <b>${nf(legs[i])} Gm</b> ${i===0?(o.start?'vom Startpunkt':''):'vom vorherigen Stopp'}`:'';
+    const prevSys=i===0?startSys(o):PL[seqF[i-1]].s;
+    const leg=legs&&legs[i]!=null&&legs[i]>=0?(prevSys&&prevSys!==pl.s?` · <b>Systemwechsel</b> (gerechnet wie ${nf(legs[i])} Gm)`:` · <b>${nf(legs[i])} Gm</b> ${i===0?(o.start?'vom Startpunkt':''):'vom vorherigen Stopp'}`):'';
     return `<div class="stop"><div class="sname">${order&&order.length?`${i+1}. `:''}${esc(pl.pl)} <span class="sloc">· ${esc(pl.lc)} · Terminal: ${esc(terms)}${leg}</span></div>`+
       lines.map(l=>`<div class="line"><span>${esc(CM[l.cid].n)}: ${nf(l.take,l.take%1?1:0)} SCU × ${nf(l.o.price)} aUEC`+
         `${l.o.est?' <span class="note">· Nachfrage geschätzt</span>':''}${(Date.now()/1000-l.o.mod)>7*86400?` <span class="note">· Preis von ${ageTxt(l.o.mod)}</span>`:''}</span>`+
@@ -264,14 +276,15 @@ function stopsHtml(plan,order,legs,o){
   }).join('');
 }
 function compute(){
-  const out=$('res');const {need,bad}=getNeed();const o=getOpts();
+  const out=$('res');const {need,bad}=getNeed();const o=getOpts();setJump(o.jump);
   const ids=Object.keys(need);
   const tot=ids.reduce((s,c)=>s+need[c],0);
   $('sum').textContent=ids.length?`${ids.length} Ware${ids.length>1?'n':''}, zusammen ${nf(tot,tot%1?1:0)} SCU`:'';
   if(!ids.length){out.innerHTML='<div class="card"><div class="empty">Gib oben mindestens eine Ware und eine SCU-Menge ein.</div></div>';return;}
+  if(!o.sys.length){out.innerHTML='<div class="card"><div class="empty">Wähle oben mindestens ein System.</div></div>';return;}
   const off=buildOffers(o,need);
   const warns=[];
-  ids.filter(c=>off[c].size===0).forEach(c=>warns.push(`Für ${esc(CM[c].n)} gibt es in ${esc(o.sys)} mit den aktuellen Einstellungen keinen Abnehmer.`));
+  ids.filter(c=>off[c].size===0).forEach(c=>warns.push(`Für ${esc(CM[c].n)} gibt es in ${esc(o.sys.join(', '))} mit den aktuellen Einstellungen keinen Abnehmer.`));
   const active=ids.filter(c=>off[c].size>0);
   const need2={};active.forEach(c=>need2[c]=need[c]);
   let html=bad?'<div class="warn">Mindestens ein Warenname wird nicht erkannt (rot markiert). Bitte aus der Vorschlagsliste wählen.</div>':'';
@@ -299,7 +312,7 @@ function compute(){
     const used=[...usedSet];
     const r=bestRoute(used,d0);
     const order=r?r.order:null,dist=r?r.dist:null;
-    const legs=order?order.map((p,i)=>i===0?(d0?d0[p]:null):DM[order[i-1]*N+p]):null;
+    const legs=order?order.map((p,i)=>i===0?(d0?d0[p]:null):DMX[order[i-1]*N+p]):null;
     const cost=oo.cost>0&&dist!=null?oo.cost*dist:0;
     cards.push({k,plan,used,order,dist,legs,cost,net:plan.rev-cost,sig:[...used].sort((a,b)=>a-b).join()});
   }

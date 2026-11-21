@@ -26,6 +26,7 @@ Kachel für `index.php`: `kachel_frachtrechner.html`.
 ### Entfernungen und Startpunkt
 Die Seite fragt einen Startpunkt (Himmelskörper oder Ort) und Streckenkosten (aUEC je Gigameter) ab. Sie wählt unter
 1 bis 3 Stopps die Bündel mit dem besten Erlös abzüglich Streckenkosten und zeigt die Reihenfolge samt Teilstrecken.
+Mehrere Systeme lassen sich gleichzeitig anhaken; ein Systemwechsel wird pauschal mit einem einstellbaren Gm-Wert (Standard 100) angesetzt.
 Die Ortsentfernungen (UEX `terminals_distances`, innerhalb eines Systems) liegen in `uex_distances` und werden je Lauf
 bis zu `UEX_DIST_PER_RUN` (Standard 500) nachgeladen, bei Fehlern oder Limit läuft ein neuer Versuch nach 10 Minuten.
 Die erste Befüllung braucht deshalb mehrere Läufe; solange Paare fehlen, rechnet die Seite mit den vorhandenen
