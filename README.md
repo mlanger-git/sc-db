@@ -23,14 +23,25 @@ Tabellen `uex_*`, `app/tradepage.py` erzeugt daraus `SC_Frachtrechner.html`. Die
 `TRADE_INTERVAL_HOURS` (Standard 3) aktualisiert, alles andere weiterhin alle `UPDATE_INTERVAL_HOURS`.
 Kachel für `index.php`: `kachel_frachtrechner.html`.
 
-### Entfernungen und Startpunkt
-Die Seite fragt einen Startpunkt (Himmelskörper oder Ort) und Streckenkosten (aUEC je Gigameter) ab. Sie wählt unter
-1 bis 3 Stopps die Bündel mit dem besten Erlös abzüglich Streckenkosten und zeigt die Reihenfolge samt Teilstrecken.
-Mehrere Systeme lassen sich gleichzeitig anhaken; ein Systemwechsel wird pauschal mit einem einstellbaren Gm-Wert (Standard 100) angesetzt.
+### Entfernungen, Reisezeit und Startpunkt
+Die Seite fragt einen Startpunkt (Himmelskörper oder Ort), Streckenkosten (aUEC je Gigameter) und ein Optimierungsziel ab:
+Gewinn je Stunde (Standard), Netto-Erlös oder kürzeste Zeit. Sie zeigt Alternativen mit 1 bis 3 Stopps und zusätzlich den
+besten Plan nach dem gewählten Ziel, jeweils mit Reihenfolge, Teilstrecken (Gm) und geschätzter Reisezeit.
+Die Reihenfolge der Stopps hat erst die wenigsten Systemwechsel (Stopps im selben System werden zusammen angefahren),
+dann die kürzeste Zeit.
+
+Systemwechsel laufen über die Gateway-Stationen (UEX-Terminals wie "Pyro Gateway (Stanton)", erkannt am Muster
+`<Ziel> Gateway (<Quellsystem>)`): Weg zum Gateway im Startsystem, Sprungtunnel, Weg vom Gateway im Zielsystem zum Stopp.
+Die Gateways werden auch ohne Verkaufspreise als Ort geführt, damit ihre Entfernungen geladen werden (`uex.place_reps`).
+
+Die Zeit ist eine grobe Schätzung: Entfernung / Quantum-Geschwindigkeit (Standard 200 Mm/s) + Zuschlag je Flug (1 Min)
++ Tunnelzeit je Sprung (3 Min) + Zeit je Verkaufsstopp (5 Min); alle Werte sind auf der Seite unter "Zeit-Annahmen" einstellbar.
+Fehlt eine Entfernung, schätzt die Seite sie über bekannte dritte Orte (Dreiecksungleichung) und markiert die Etappe als "geschätzt".
+
 Die Ortsentfernungen (UEX `terminals_distances`, innerhalb eines Systems) liegen in `uex_distances` und werden je Lauf
 bis zu `UEX_DIST_PER_RUN` (Standard 500) nachgeladen, bei Fehlern oder Limit läuft ein neuer Versuch nach 10 Minuten.
-Die erste Befüllung braucht deshalb mehrere Läufe; solange Paare fehlen, rechnet die Seite mit den vorhandenen
-Entfernungen oder, wenn keine da sind, nur mit dem Erlös. Log-Zeile: `uex-dist: OK - N Entfernungen geladen, M offen`.
+Die erste Befüllung braucht deshalb mehrere Läufe; solange Paare fehlen, rechnet die Seite mit Schätzwerten.
+Log-Zeile: `uex-dist: OK - N Entfernungen geladen, M offen`.
 
 ## Warenwerte
 `app/valuepage.py` erzeugt `SC_Warenwerte.html` aus denselben UEX-Preisen (Median und Durchschnitt je SCU, bester Preis, Spanne,

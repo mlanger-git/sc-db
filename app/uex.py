@@ -5,6 +5,7 @@ Die benoetigten Endpunkte brauchen laut Dokumentation keinen Token; falls das UE
 spaeter aendert, kann ein Token ueber die Umgebungsvariable UEX_TOKEN gesetzt werden.
 """
 import os
+import re
 import time
 import datetime as dt
 
@@ -125,11 +126,27 @@ def place_name(t):
     return t["space_station"] or t["city"] or t["outpost"] or t["nickname"] or t["displayname"] or t["name"] or "?"
 
 
+_GATEWAY_RE = re.compile(r"^\s*(?P<to>.+?) Gateway \((?P<frm>[^)]+)\)\s*$")
+
+
+def gateway_target(t):
+    """Zielsystem, wenn das Terminal zu einer Gateway-Station gehoert (z. B. "Pyro Gateway (Stanton)" -> "Pyro"), sonst None."""
+    m = _GATEWAY_RE.match(t["space_station"] or "")
+    if not m or (t["star_system"] or "").lower() != m.group("frm").strip().lower():
+        return None
+    to = m.group("to").strip()
+    return next((s for s in SYSTEMS if s.lower() == to.lower()), None)
+
+
 def place_reps(con):
-    """Je Ort (System, Name) ein Referenz-Terminal (kleinste ID) unter den Terminals mit Verkaufspreisen."""
+    """Je Ort (System, Name) ein Referenz-Terminal (kleinste ID) unter den Terminals mit Verkaufspreisen.
+    Gateway-Stationen (Jump Points) kommen auch ohne Verkaufspreise dazu, damit ihre Entfernungen geladen werden."""
     reps = {}
     for r in con.execute("SELECT * FROM uex_terminals WHERE id IN (SELECT DISTINCT id_terminal FROM uex_prices) ORDER BY id"):
         reps.setdefault((r["star_system"], place_name(r)), r["id"])
+    for r in con.execute("SELECT * FROM uex_terminals ORDER BY id"):
+        if gateway_target(r):
+            reps.setdefault((r["star_system"], place_name(r)), r["id"])
     return reps
 
 
