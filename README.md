@@ -37,8 +37,9 @@ Die Gateways werden auch ohne Verkaufspreise als Ort geführt, damit ihre Entfer
 Die Zeit ist eine grobe Schätzung: Entfernung / Quantum-Geschwindigkeit + Spool-Zeit des Drives + Zuschlag je Flug (0,8 Min)
 + Tunnelzeit je Sprung (5 Min) + Zeit je Verkaufsstopp (5 Min); Geschwindigkeit, Zuschlag, Tunnel- und Stoppzeit sind auf der Seite
 unter "Zeit-Annahmen" einstellbar (die Geschwindigkeit nur, wenn man die Reisedaten übersteuern will).
-Der Sprungtunnel verbraucht laut CIG Quantum Fuel (feste Menge je Jump Point, beim Einstellen im Spiel sichtbar); die Menge ist uns nicht bekannt,
-deshalb gibt es unter "Zeit-Annahmen" das Feld "Treibstoff je Sprungtunnel" (SCU, Standard 0); der Wert geht in Treibstoff, Kosten und Reichweitenwarnung ein.
+Der Sprungtunnel verbraucht Quantum Fuel (laut CIG eine feste Menge je Jump Point; eine konkrete Zahl ist nicht veröffentlicht).
+Standard: 5 % des Quantum-Tanks je Tunnel (Angabe von Mark, Version 4.10.3), einstellbar unter "Zeit-Annahmen". Ohne gewähltes Schiff gilt die
+mittlere Tankgröße der Schiffe. Der Wert geht in Treibstoff, Kosten (zum Quantum-Fuel-Preis), Routenbewertung und Reichweitenwarnung ein.
 
 ### Reisedaten (Quantum Drive)
 Drei Stufen, auswählbar im Frachtrechner und im Browser gemerkt (`sc_fracht_v3`):
