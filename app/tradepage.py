@@ -87,12 +87,13 @@ PAGE = r'''<!DOCTYPE html>
       <label>Quantum-Geschwindigkeit <input type="number" id="oq" min="20" step="10" placeholder="aus Reisedaten" style="width:110px"> Mm/s</label>
       <label>Zuschlag je Flug (zusätzlich zur Spool-Zeit) <input type="number" id="ov" min="0" step="0.5" value="0.8" style="width:70px"> Min</label>
       <label>Dauer Sprungtunnel <input type="number" id="ot" min="0" step="0.5" value="5" style="width:70px"> Min</label>
+      <label>„Kürzeste Zeit“: mindestens <input type="number" id="omr" min="0" max="100" step="5" value="90" style="width:70px"> % des möglichen Erlöses</label>
       <label>Treibstoff je Sprungtunnel <input type="number" id="of" min="0" max="100" step="1" value="5" style="width:70px"> % des Quantum-Tanks</label>
       <label>Zeit je Verkaufsstopp <input type="number" id="ow" min="0" step="1" value="5" style="width:70px"> Min</label>
     </div>
   </details>
   <div class="hint">Als Startpunkt kannst du einen Himmelskörper (z. B. ArcCorp) oder einen Ort in jedem System wählen, unabhängig von den Zielsystemen; diese bestimmen nur, wo verkauft wird. Die Route läuft vom Startpunkt über die Verkaufsstopps, ein Rückweg ist nicht eingerechnet. Stopps im selben System werden zusammen angefahren, die Reihenfolge ist die mit der kürzesten Zeit.
-  <b>Optimieren nach</b>: „Gewinn je Stunde“ vergleicht Erlös und Reisezeit, „Netto-Erlös“ zieht nur die Streckenkosten ab, „Kürzeste Zeit“ verkauft die Fracht so schnell wie möglich.
+  <b>Optimieren nach</b>: „Gewinn je Stunde“ vergleicht Erlös und Reisezeit, „Netto-Erlös“ zieht nur die Streckenkosten ab, „Kürzeste Zeit“ sucht die schnellste Route, die mindestens den eingestellten Anteil (Standard 90 %, unter „Zeit-Annahmen“) des überhaupt möglichen Erlöses erreicht; ein paar übrig gebliebene SCU billiger Ware zählen dabei nicht.
   <b>Reisedaten</b>: „Durchschnitt“ rechnet mit den Mittelwerten aller Quantum Drives (Geschwindigkeit, Spool-Zeit, Treibstoffverbrauch), ohne dass du etwas eingeben musst. Mit „Mein Schiff“ nimmt der Rechner den Quantum Drive, den das Schiff ab Werk hat, und mit „gewähltem Quantum Drive“ genau den Drive, den du eingebaut hast. Bei einem gewählten Schiff prüft der Rechner auch, ob der Quantum-Tank für die Etappen reicht. Deine Auswahl wird im Browser gemerkt.
   Die <b>Streckenkosten</b> sind die Treibstoffkosten je Gigameter (Verbrauch des Quantum Drives × Preis für Quantum Fuel laut UEX: __QFTXT__). Lässt du das Feld leer, rechnet die Seite damit; trägst du einen Wert ein, gilt dein Wert (z. B. um Risiko mit einzupreisen). Je höher der Wert, desto eher wählt der Rechner nahe Stopps, bei 0 zählt nur der Erlös.
   Ein „Stopp“ ist ein Ort (Station, Stadt oder Außenposten); mehrere Terminals am selben Ort zählen als ein Stopp. Bei den Zielsystemen (Verkauf) kannst du mehrere gleichzeitig anhaken; die Entfernungen innerhalb eines Systems sind UEX-Schätzungen (geladen: __DTXT__). Bei einem Systemwechsel fliegt der Rechner zum Jump Point (Gateway-Station), springt und fliegt vom Gateway im Zielsystem zum Stopp.
@@ -211,7 +212,7 @@ function addRow(name='',scu=''){
 $('add').onclick=()=>{addRow();};
 $('clr').onclick=()=>{$('rows').innerHTML='';addRow();schedule();};
 $('os').addEventListener('change',schedule);
-['od','oi','oa','oc','om','oq','ov','ot','of','ow','st','qm','qs','qd'].forEach(i=>$(i).addEventListener('input',schedule));
+['od','oi','oa','oc','om','oq','ov','ot','of','omr','ow','st','qm','qs','qd'].forEach(i=>$(i).addEventListener('input',schedule));
 // Schiff gewechselt: im Modus „gewählter Drive“ zuerst dessen Standard-Drive vorwählen
 $('qs').addEventListener('input',()=>{const sh=SHM[$('qs').value];if(sh&&QDM[sh[2]]&&$('qm').value==='drive')$('qd').value=sh[2];});
 $('qm').addEventListener('input',()=>{if($('qm').value==='drive'){const sh=SHM[$('qs').value];if(sh&&QDM[sh[2]])$('qd').value=sh[2];}});
@@ -222,7 +223,7 @@ const numIn=(id,def,min)=>{const v=parseFloat($(id).value);return isNaN(v)?def:M
 function getOpts(){const q=qdSel(),oc=$('oc').value.trim();
   return {sys:selSys(),demand:$('od').checked,illegal:$('oi').checked,age:+$('oa').value,start:$('st').value,q,
   cost:oc===''?q.fuel*FP:Math.max(0,+oc||0),
-  mode:$('om').value,speed:numIn('oq',q.speed,20),ovh:numIn('ov',0.8,0)+q.spool/60,tun:numIn('ot',5,0),tf:(q.tank||TKAVG||0)*numIn('of',5,0)/100,dwell:numIn('ow',5,0)};}
+  mode:$('om').value,speed:numIn('oq',q.speed,20),ovh:numIn('ov',0.8,0)+q.spool/60,tun:numIn('ot',5,0),tf:(q.tank||TKAVG||0)*numIn('of',5,0)/100,mr:Math.min(100,numIn('omr',90,0))/100,dwell:numIn('ow',5,0)};}
 function getNeed(){const need={};let bad=false;
   document.querySelectorAll('#rows .row').forEach(r=>{const n=r.querySelector('.cn'),s=r.querySelector('.cs');
     const nm=n.value.trim().toLowerCase(),q=parseFloat(s.value);
@@ -234,7 +235,7 @@ function getNeed(){const need={};let bad=false;
     need[c.id]=(need[c.id]||0)+q;});
   return {need,bad};}
 function save(){try{const o=getOpts();localStorage.setItem(LS,JSON.stringify({rows:[...document.querySelectorAll('#rows .row')].map(r=>[r.querySelector('.cn').value,r.querySelector('.cs').value]),
-  od:o.demand,oi:o.illegal,oa:$('oa').value,os:o.sys,st:o.start,oc:$('oc').value,om:$('om').value,oq:$('oq').value,ov:$('ov').value,ot:$('ot').value,op:$('of').value,ow:$('ow').value,qm:$('qm').value,qs:$('qs').value,qd:$('qd').value}));}catch(e){}}
+  od:o.demand,oi:o.illegal,oa:$('oa').value,os:o.sys,st:o.start,oc:$('oc').value,om:$('om').value,oq:$('oq').value,ov:$('ov').value,ot:$('ot').value,op:$('of').value,omr:$('omr').value,ow:$('ow').value,qm:$('qm').value,qs:$('qs').value,qd:$('qd').value}));}catch(e){}}
 function load(){try{let s=JSON.parse(localStorage.getItem(LS)||'null'),old=false;
   if(!s){s=JSON.parse(localStorage.getItem(LS_OLD)||'null');old=true;}   // alte Version: Waren, Systeme, Startpunkt übernehmen; Kosten und Geschwindigkeit gelten neu
   if(!s)return false;
@@ -246,6 +247,7 @@ function load(){try{let s=JSON.parse(localStorage.getItem(LS)||'null'),old=false
   (old?['ow']:['oq','ov','ot','ow']).forEach(k=>{if(k==='ot'&&s[k]==='3')return;   // 3 Min war der frühere Standardwert
     if(s[k]!=null&&s[k]!=='')$(k).value=s[k];});
   if(!old&&s.op!=null&&s.op!=='')$('of').value=s.op;
+  if(!old&&s.omr!=null&&s.omr!=='')$('omr').value=s.omr;
   const ss=Array.isArray(s.os)?s.os:(s.os?[s.os]:[]);
   if(ss.some(x=>SYS.includes(x)))document.querySelectorAll('#os input').forEach(i=>{i.checked=ss.includes(i.value);});
   fillStart(s.st);return true;}catch(e){return false;}}
@@ -325,7 +327,9 @@ function bestRoute(S,st,s0){
 // Zielwert je nach Modus: Gewinn je Stunde, Netto-Erlös oder (bei kürzester Zeit) erst möglichst alles verkaufen, dann Zeit
 function score(rev,rest,r,o){
   const net=rev-o.cost*r.d-r.ch*o.tf*FP,hrs=Math.max(r.t,1)/60;
-  return o.mode==='time'?-rest*1e9-r.t+rev*1e-9:o.mode==='net'?net:net/hrs;
+  // Kürzeste Zeit: zählt nur, was mindestens den Mindest-Erlös (Anteil am Maximum) erreicht; darunter wird stark bestraft
+  if(o.mode==='time'){const pen=o.mxRev>0?Math.max(0,o.mr-rev/o.mxRev):0;return -pen*1e12-r.t+rev*1e-9;}
+  return o.mode==='net'?net:net/hrs;
 }
 function candidates(need,off,o,st){
   const set=new Set(),all=new Set();
@@ -433,11 +437,11 @@ function compute(){
   // Keine Entfernungsdaten da? Dann nur nach Erlös rechnen und das sagen
   if(!DM.some(v=>v>0)&&(o.cost>0||o.mode!=='net')){warns.push('Die Entfernungsdaten sind noch nicht geladen, deshalb zählt vorerst nur der Erlös.');oo={...o,cost:0,mode:'net'};}
   // Alternativen mit 1 bis 3 Stopps (nach Netto-Erlös) und, falls anders gewählt, die besten Pläne nach dem gewählten Ziel
+  const mx=maxPlan(need2,off);oo={...oo,mxRev:mx.rev};
   const ooN={...oo,mode:'net'};
   const best3=(oc,ov)=>{const {cands,all}=candidates(need2,off,oc,st);return [1,2,3].map(k=>k>all.length&&k>1?null:bestExact(k,cands,need2,off,oc,st,s0));};
   const exN=best3(ooN);
   const exM=oo.mode==='net'?null:best3(oo);
-  const mx=maxPlan(need2,off);
   const cards=[],seen=new Set();
   function addCard(pick){
     const plan=evalSet(pick.S,need2,off,true);
