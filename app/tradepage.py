@@ -465,6 +465,7 @@ function compute(){
     const rec=shown.length>1&&c.v===bestV;
     const pct=mx.rev>0?c.plan.rev/mx.rev*100:100;
     const meta=[`Erlös ${nf(c.plan.rev)} aUEC (${nf(pct,1)} % des Maximums)`,`Strecke ${nf(c.r.d)} Gm${o.start?' ab Startpunkt':''}`,`Zeit ${fmtT(c.r.t)} (Flug ${fmtT(c.r.t-M.dwell*c.order.length)} + ${nf(M.dwell*c.order.length)} Min Verkauf)`];
+    if(c.r.ch>0)meta.push(`Sprungtunnel ${c.r.ch}× ${nf(M.tun,M.tun%1?1:0)} Min = ${nf(c.r.ch*M.tun,M.tun%1?1:0)} Min`);
     if(oo.mode!=='net'||oo.cost>0||DM.some(v=>v>0))meta.push(`${nf(Math.round(c.net/(Math.max(c.r.t,1)/60)))} aUEC je Stunde`);
     if(useCost)meta.push(`Streckenkosten ${nf(c.cost)} aUEC`);
     if(o.q.tank)meta.push(`Treibstoff ca. ${nf(c.r.d*o.q.fuel+c.r.ch*o.tf,2)} SCU`);
