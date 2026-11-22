@@ -28,7 +28,8 @@ CREATE TABLE IF NOT EXISTS vehicles (
     category          TEXT,
     subcategory       TEXT,
     size_label        TEXT,
-    cargo_scu         REAL
+    cargo_scu         REAL,
+    qtank_scu         REAL
 );
 CREATE INDEX IF NOT EXISTS idx_vehicles_name ON vehicles(name);
 
@@ -103,6 +104,16 @@ CREATE TABLE IF NOT EXISTS uex_prices (
 CREATE TABLE IF NOT EXISTS uex_distances (
     id_a INTEGER, id_b INTEGER, gm REAL, fetched_at INTEGER,
     PRIMARY KEY (id_a, id_b)
+);
+
+-- Quantum Drives (Star Citizen Wiki API): Treibstoff in SCU je Gm, Geschwindigkeit in Mm/s
+CREATE TABLE IF NOT EXISTS quantum_drives (
+    class_name TEXT PRIMARY KEY, name TEXT, size INTEGER, grade TEXT, class TEXT,
+    fuel_scu_per_gm REAL, speed_mms REAL, spool_s REAL, cooldown_s REAL, accel1 REAL, accel2 REAL
+);
+-- Standard-Quantum-Drive je Schiff (qd_class NULL = keiner gefunden)
+CREATE TABLE IF NOT EXISTS ship_qd (
+    slug TEXT PRIMARY KEY, qd_class TEXT, qd_name TEXT, fetched_at TEXT NOT NULL
 );
 
 -- Fertige Sicht, entspricht der Excel-Liste

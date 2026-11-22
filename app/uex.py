@@ -108,8 +108,14 @@ def update(con):
     if len(price_rows) < MIN_PRICES:
         raise RuntimeError(f"Nur {len(price_rows)} Verkaufspreise erhalten, das ist ungewoehnlich wenig")
 
+    # Preis fuer Quantum-Treibstoff (aUEC je SCU, Kaufpreis) fuer die Streckenkosten im Frachtrechner
+    qf = [_f(c.get("price_buy")) for c in commodities if (c.get("name") or "").strip().lower() == "quantum fuel"]
+    qf = [x for x in qf if 100 <= x <= 20000]
+
     ts = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with con:
+        if qf:
+            con.execute("INSERT OR REPLACE INTO settings(key, value) VALUES ('qfuel_price', ?)", (str(round(qf[0], 1)),))
         con.execute("DELETE FROM uex_terminals")
         con.execute("DELETE FROM uex_commodities")
         con.execute("DELETE FROM uex_prices")

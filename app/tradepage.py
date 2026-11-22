@@ -68,8 +68,14 @@ PAGE = r'''<!DOCTYPE html>
     <span class="syl">Systeme <span id="os"></span></span>
     <label>Startpunkt <select id="st"></select></label>
     <label>Optimieren nach <select id="om"><option value="profit" selected>Gewinn je Stunde</option><option value="net">Netto-Erlös</option><option value="time">Kürzeste Zeit</option></select></label>
-    <label>Streckenkosten <input type="number" id="oc" min="0" step="500" value="2000" style="width:100px"> aUEC je Gm</label>
+    <label>Streckenkosten <input type="number" id="oc" min="0" step="1" placeholder="auto" style="width:120px"> aUEC je Gm</label>
   </div>
+  <div class="opts" style="margin-top:10px">
+    <label>Reisedaten <select id="qm"><option value="avg" selected>Durchschnitt aller Quantum Drives</option><option value="ship">Mein Schiff (Standard-Quantum-Drive)</option><option value="drive">Mein Schiff mit gewähltem Quantum Drive</option></select></label>
+    <label id="qsl" style="display:none">Schiff <select id="qs"></select></label>
+    <label id="qdl" style="display:none">Quantum Drive <select id="qd"></select></label>
+  </div>
+  <div class="sum" id="qinfo"></div>
   <div class="opts" style="margin-top:10px">
     <label><input type="checkbox" id="od" checked> Nachfrage der Terminals berücksichtigen</label>
     <label><input type="checkbox" id="oi"> illegale Waren und No-Questions-Asked-Terminals einbeziehen</label>
@@ -78,17 +84,18 @@ PAGE = r'''<!DOCTYPE html>
   </div>
   <details class="adv"><summary>Zeit-Annahmen (für die Reisezeit)</summary>
     <div class="opts" style="margin-top:8px">
-      <label>Quantum-Geschwindigkeit <input type="number" id="oq" min="20" step="10" value="200" style="width:80px"> Mm/s</label>
-      <label>Zuschlag je Flug <input type="number" id="ov" min="0" step="0.5" value="1" style="width:70px"> Min</label>
+      <label>Quantum-Geschwindigkeit <input type="number" id="oq" min="20" step="10" placeholder="aus Reisedaten" style="width:110px"> Mm/s</label>
+      <label>Zuschlag je Flug (zusätzlich zur Spool-Zeit) <input type="number" id="ov" min="0" step="0.5" value="0.8" style="width:70px"> Min</label>
       <label>Dauer Sprungtunnel <input type="number" id="ot" min="0" step="0.5" value="3" style="width:70px"> Min</label>
       <label>Zeit je Verkaufsstopp <input type="number" id="ow" min="0" step="1" value="5" style="width:70px"> Min</label>
     </div>
   </details>
   <div class="hint">Als Startpunkt kannst du einen Himmelskörper (z. B. ArcCorp) oder einen Ort wählen. Die Route läuft vom Startpunkt über die Verkaufsstopps, ein Rückweg ist nicht eingerechnet. Stopps im selben System werden zusammen angefahren, die Reihenfolge ist die mit der kürzesten Zeit.
   <b>Optimieren nach</b>: „Gewinn je Stunde“ vergleicht Erlös und Reisezeit, „Netto-Erlös“ zieht nur die Streckenkosten ab, „Kürzeste Zeit“ verkauft die Fracht so schnell wie möglich.
-  Die <b>Streckenkosten</b> sagen, wie viel dir ein Gigameter Flugstrecke wert ist (Treibstoff, Risiko). Je höher der Wert, desto eher wählt der Rechner nahe Stopps, bei 0 zählt nur der Erlös.
+  <b>Reisedaten</b>: „Durchschnitt“ rechnet mit den Mittelwerten aller Quantum Drives (Geschwindigkeit, Spool-Zeit, Treibstoffverbrauch), ohne dass du etwas eingeben musst. Mit „Mein Schiff“ nimmt der Rechner den Quantum Drive, den das Schiff ab Werk hat, und mit „gewähltem Quantum Drive“ genau den Drive, den du eingebaut hast. Bei einem gewählten Schiff prüft der Rechner auch, ob der Quantum-Tank für die Etappen reicht. Deine Auswahl wird im Browser gemerkt.
+  Die <b>Streckenkosten</b> sind die Treibstoffkosten je Gigameter (Verbrauch des Quantum Drives × Preis für Quantum Fuel laut UEX: __QFTXT__). Lässt du das Feld leer, rechnet die Seite damit; trägst du einen Wert ein, gilt dein Wert (z. B. um Risiko mit einzupreisen). Je höher der Wert, desto eher wählt der Rechner nahe Stopps, bei 0 zählt nur der Erlös.
   Ein „Stopp“ ist ein Ort (Station, Stadt oder Außenposten); mehrere Terminals am selben Ort zählen als ein Stopp. Mehrere Systeme kannst du gleichzeitig anhaken; die Entfernungen innerhalb eines Systems sind UEX-Schätzungen (geladen: __DTXT__). Bei einem Systemwechsel fliegt der Rechner zum Jump Point (Gateway-Station), springt und fliegt vom Gateway im Zielsystem zum Stopp.
-  Die <b>Reisezeit</b> ist eine grobe Schätzung aus Entfernung, Quantum-Geschwindigkeit, einem Zuschlag je Flug, der Tunnelzeit und der Zeit je Verkaufsstopp; die Werte kannst du unter „Zeit-Annahmen“ anpassen. Fehlt UEX eine Entfernung, rechnet der Rechner mit dem Mittelwert und markiert die Etappe als „geschätzt“.</div>
+  Die <b>Reisezeit</b> ist eine grobe Schätzung aus Entfernung, Quantum-Geschwindigkeit, Spool-Zeit des Drives plus einem Zuschlag je Flug, der Tunnelzeit und der Zeit je Verkaufsstopp; die Werte kannst du unter „Zeit-Annahmen“ anpassen. Fehlt UEX eine Entfernung, rechnet der Rechner mit dem Mittelwert und markiert die Etappe als „geschätzt“.</div>
 </div>
 
 <div id="res"></div>
@@ -102,6 +109,9 @@ const C = __COMMODITIES__;
 const P = __PRICES__;
 const DT = __DISTS__;
 const GWT = __GATEWAYS__;
+const QD = __QD__;     // [Klasse, Name, Größe, Grade, Klasse, SCU je Gm, Mm/s, Spool s, Cooldown s]
+const SH = __SHIPS__;  // [Schiff, Tank SCU, Klasse des Standard-Drives]
+const QFP = __QFP__;   // aUEC je SCU Quantum Fuel (UEX), 0 = unbekannt
 const TM={}, CM={}, CBN={};
 T.forEach(t=>TM[t.id]=t); C.forEach(c=>{CM[c.id]=c;CBN[c.n.toLowerCase()]=c;});
 const N=PL.length, DM=new Float32Array(N*N).fill(-1);
@@ -109,8 +119,14 @@ for(let i=0;i<N;i++)DM[i*N+i]=0;
 DT.forEach(([i,j,d])=>{DM[i*N+j]=d;DM[j*N+i]=d;});
 // Notwert für unbekannte Strecken ohne Anhaltspunkt: Median aller bekannten Entfernungen
 let MED=10;{const a=DT.map(x=>x[2]).filter(d=>d>0).sort((x,y)=>x-y);if(a.length)MED=a[a.length>>1];}
-let M={speed:200,ovh:1,tun:3,dwell:5};   // QT-Geschwindigkeit Mm/s, Zuschlag je Flug, Tunnelzeit, Zeit je Verkaufsstopp (Minuten)
+let M={speed:262,ovh:1,tun:3,dwell:5};   // QT-Geschwindigkeit Mm/s, Zuschlag je Flug, Tunnelzeit, Zeit je Verkaufsstopp (Minuten)
 let DX=DM,TX=DM,EX=DM;
+const QDM={};QD.forEach(q=>QDM[q[0]]=q);
+const SHM={};SH.forEach(x=>SHM[x[0]]=x);
+const med=a=>{a=a.filter(x=>x!=null&&x>0).sort((x,y)=>x-y);if(!a.length)return null;const h=a.length>>1;return a.length%2?a[h]:(a[h-1]+a[h])/2;};
+// Durchschnittswerte (Median aller Quantum Drives); Rückfall, falls die Tabelle noch leer ist
+const QAVG={speed:med(QD.map(q=>q[6]))||262,fuel:med(QD.map(q=>q[5]))||0.0167,spool:med(QD.map(q=>q[7]))||6.6};
+const FP=QFP>0?QFP:1760;
 const legT=d=>d>0?M.ovh+d*1000/M.speed/60:0;
 // Schätzung einer fehlenden Entfernung über bekannte dritte Orte (Dreiecksungleichung: Mitte zwischen Unter- und Obergrenze)
 function estD(i,j){
@@ -120,15 +136,15 @@ function estD(i,j){
 }
 // Etappe von Ort i nach Ort j: Entfernung (Gm), Zeit (Min), e=1 wenn geschätzt; bei Systemwechsel über die Gateways beider Systeme
 function legInfo(i,j){
-  if(i===j)return {d:0,t:0,e:0};
+  if(i===j)return {d:0,m:0,t:0,e:0};
   const a=PL[i].s,b=PL[j].s;
-  if(a===b){const d=DM[i*N+j];if(d>=0)return {d,t:legT(d),e:0};const x=estD(i,j);return {d:x,t:legT(x),e:1};}
+  if(a===b){const d=DM[i*N+j];if(d>=0)return {d,m:d,t:legT(d),e:0};const x=estD(i,j);return {d:x,m:x,t:legT(x),e:1};}
   const g1=GWT[a+'>'+b],g2=GWT[b+'>'+a];let e=0,d1=-1,d2=-1;
   if(g1!=null)d1=DM[i*N+g1];
   if(g2!=null)d2=DM[g2*N+j];
   if(d1<0){d1=g1!=null?estD(i,g1):MED;e=1;}
   if(d2<0){d2=g2!=null?estD(g2,j):MED;e=1;}
-  return {d:d1+d2,t:legT(d1)+M.tun+legT(d2),e,cross:true,g1,g2};
+  return {d:d1+d2,m:Math.max(d1,d2),t:legT(d1)+M.tun+legT(d2),e,cross:true,g1,g2};
 }
 function buildLegs(){
   DX=new Float32Array(N*N);TX=new Float32Array(N*N);EX=new Uint8Array(N*N);
@@ -137,7 +153,7 @@ function buildLegs(){
 const $=id=>document.getElementById(id);
 const nf=(n,d=0)=>Number(n).toLocaleString('de-DE',{minimumFractionDigits:d,maximumFractionDigits:d});
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-const LS='sc_fracht_v2';
+const LS='sc_fracht_v3',LS_OLD='sc_fracht_v2';
 const SYS=[...new Set(T.map(t=>t.s))].sort((a,b)=>['Stanton','Pyro','Nyx'].indexOf(a)-['Stanton','Pyro','Nyx'].indexOf(b));
 
 // ---- Oberfläche -------------------------------------------------------
@@ -156,6 +172,31 @@ function fillStart(sel){
   $('st').innerHTML=h;
   if(sel&&[...$('st').options].some(o=>o.value===sel))$('st').value=sel;
 }
+const dlabel=q=>`${q[1]} · S${q[2]}${q[3]?' '+q[3]:''}${q[4]&&q[4]!=='None'?' '+q[4]:''} · ${nf(q[6])} Mm/s`;
+$('qs').innerHTML=SH.slice().sort((a,b)=>a[0].localeCompare(b[0],'de')).map(x=>`<option value="${esc(x[0])}">${esc(x[0])}</option>`).join('');
+$('qd').innerHTML=QD.slice().sort((a,b)=>a[2]-b[2]||a[6]-b[6]||a[1].localeCompare(b[1])).map(q=>`<option value="${esc(q[0])}">${esc(dlabel(q))}</option>`).join('');
+[...$('qm').options].forEach(op=>{if(op.value==='ship'&&!SH.length)op.disabled=true;if(op.value==='drive'&&!QD.length)op.disabled=true;});
+function qmode(){const v=$('qm').value;return (v==='ship'&&!SH.length)||(v==='drive'&&!QD.length)?'avg':v;}
+// gewählte Reisedaten: Geschwindigkeit (Mm/s), Treibstoff (SCU je Gm), Spool (s), Tankgröße (SCU, null = unbekannt)
+function qdSel(){
+  const m=qmode(),ship=(m!=='avg'&&SHM[$('qs').value])||null;
+  let d=null,label='Durchschnitt aller Quantum Drives';
+  if(m==='ship'&&ship)d=QDM[ship[2]];
+  if(m==='drive')d=QDM[$('qd').value]||null;
+  if(d)label=`${d[1]} (Größe ${d[2]}${d[3]?', '+d[3]:''})`;
+  return {m,ship,drive:d,label,speed:d?d[6]:QAVG.speed,fuel:d?d[5]:QAVG.fuel,spool:d?(d[7]||QAVG.spool):QAVG.spool,tank:ship?ship[1]:null};
+}
+function showQ(){
+  const m=qmode();$('qsl').style.display=m==='avg'?'none':'';$('qdl').style.display=m==='drive'?'':'none';
+  const q=qdSel(),auto=q.fuel*FP;
+  $('oc').placeholder='auto: '+nf(auto,auto<10?1:0);$('oq').placeholder=nf(q.speed);
+  let t=`Rechnet mit: ${q.label}${q.m==='avg'?' (Mittelwert)':''} · ${nf(q.speed)} Mm/s · Spool ${nf(q.spool,1)} s · Verbrauch ${nf(q.fuel,4)} SCU/Gm`
+    +` · Treibstoffkosten ca. ${nf(auto,auto<10?1:0)} aUEC/Gm${QFP>0?'':' (Preis geschätzt)'}`;
+  if(q.tank)t+=` · Tank ${nf(q.tank,1)} SCU, Reichweite ca. ${nf(q.tank/q.fuel)} Gm`;
+  if(m==='ship'&&!q.drive)t+=' · für dieses Schiff ist kein Quantum Drive bekannt, es gelten die Durchschnittswerte';
+  if(!SH.length)t+=' · Die Zuordnung Schiff → Quantum Drive wird noch geladen (der Updater holt je Lauf nur einen Teil).';
+  $('qinfo').textContent=t;
+}
 fillStart();
 function addRow(name='',scu=''){
   const d=document.createElement('div');d.className='row';
@@ -166,12 +207,18 @@ function addRow(name='',scu=''){
 $('add').onclick=()=>{addRow();};
 $('clr').onclick=()=>{$('rows').innerHTML='';addRow();schedule();};
 $('os').addEventListener('change',()=>{fillStart($('st').value);schedule();});
-['od','oi','oa','oc','om','oq','ov','ot','ow','st'].forEach(i=>$(i).addEventListener('input',schedule));
+['od','oi','oa','oc','om','oq','ov','ot','ow','st','qm','qs','qd'].forEach(i=>$(i).addEventListener('input',schedule));
+// Schiff gewechselt: im Modus „gewählter Drive“ zuerst dessen Standard-Drive vorwählen
+$('qs').addEventListener('input',()=>{const sh=SHM[$('qs').value];if(sh&&QDM[sh[2]]&&$('qm').value==='drive')$('qd').value=sh[2];});
+$('qm').addEventListener('input',()=>{if($('qm').value==='drive'){const sh=SHM[$('qs').value];if(sh&&QDM[sh[2]])$('qd').value=sh[2];}});
+['qm','qs','qd'].forEach(i=>$(i).addEventListener('input',showQ));
 document.addEventListener('input',e=>{if(e.target.matches('.cn,.cs'))schedule();});
 
 const numIn=(id,def,min)=>{const v=parseFloat($(id).value);return isNaN(v)?def:Math.max(min,v);};
-function getOpts(){return {sys:selSys(),demand:$('od').checked,illegal:$('oi').checked,age:+$('oa').value,cost:Math.max(0,+$('oc').value||0),start:$('st').value,
-  mode:$('om').value,speed:numIn('oq',200,20),ovh:numIn('ov',1,0),tun:numIn('ot',3,0),dwell:numIn('ow',5,0)};}
+function getOpts(){const q=qdSel(),oc=$('oc').value.trim();
+  return {sys:selSys(),demand:$('od').checked,illegal:$('oi').checked,age:+$('oa').value,start:$('st').value,q,
+  cost:oc===''?q.fuel*FP:Math.max(0,+oc||0),
+  mode:$('om').value,speed:numIn('oq',q.speed,20),ovh:numIn('ov',0.8,0)+q.spool/60,tun:numIn('ot',3,0),dwell:numIn('ow',5,0)};}
 function getNeed(){const need={};let bad=false;
   document.querySelectorAll('#rows .row').forEach(r=>{const n=r.querySelector('.cn'),s=r.querySelector('.cs');
     const nm=n.value.trim().toLowerCase(),q=parseFloat(s.value);
@@ -183,12 +230,16 @@ function getNeed(){const need={};let bad=false;
     need[c.id]=(need[c.id]||0)+q;});
   return {need,bad};}
 function save(){try{const o=getOpts();localStorage.setItem(LS,JSON.stringify({rows:[...document.querySelectorAll('#rows .row')].map(r=>[r.querySelector('.cn').value,r.querySelector('.cs').value]),
-  od:o.demand,oi:o.illegal,oa:$('oa').value,os:o.sys,st:o.start,oc:$('oc').value,om:$('om').value,oq:$('oq').value,ov:$('ov').value,ot:$('ot').value,ow:$('ow').value}));}catch(e){}}
-function load(){try{const s=JSON.parse(localStorage.getItem(LS)||'null');if(!s)return false;
+  od:o.demand,oi:o.illegal,oa:$('oa').value,os:o.sys,st:o.start,oc:$('oc').value,om:$('om').value,oq:$('oq').value,ov:$('ov').value,ot:$('ot').value,ow:$('ow').value,qm:$('qm').value,qs:$('qs').value,qd:$('qd').value}));}catch(e){}}
+function load(){try{let s=JSON.parse(localStorage.getItem(LS)||'null'),old=false;
+  if(!s){s=JSON.parse(localStorage.getItem(LS_OLD)||'null');old=true;}   // alte Version: Waren, Systeme, Startpunkt übernehmen; Kosten und Geschwindigkeit gelten neu
+  if(!s)return false;
   (s.rows||[]).forEach(r=>addRow(r[0],r[1]));$('od').checked=s.od!==false;$('oi').checked=!!s.oi;if(s.oa!=null)$('oa').value=s.oa;
-  if(s.oc!=null&&s.oc!=='')$('oc').value=s.oc;
+  if(!old&&s.oc!=null&&s.oc!=='')$('oc').value=s.oc;
+  if(!old){if(['avg','ship','drive'].includes(s.qm)&&!$('qm').querySelector(`option[value=${s.qm}]`).disabled)$('qm').value=s.qm;
+    if(s.qs&&SHM[s.qs])$('qs').value=s.qs;if(s.qd&&QDM[s.qd])$('qd').value=s.qd;}
   if(['profit','net','time'].includes(s.om))$('om').value=s.om;
-  ['oq','ov','ot','ow'].forEach(k=>{if(s[k]!=null&&s[k]!=='')$(k).value=s[k];});
+  (old?['ot','ow']:['oq','ov','ot','ow']).forEach(k=>{if(s[k]!=null&&s[k]!=='')$(k).value=s[k];});
   const ss=Array.isArray(s.os)?s.os:(s.os?[s.os]:[]);
   if(ss.some(x=>SYS.includes(x)))document.querySelectorAll('#os input').forEach(i=>{i.checked=ss.includes(i.value);});
   fillStart(s.st);return true;}catch(e){return false;}}
@@ -347,9 +398,18 @@ function stopsHtml(plan,order,legs,o){
       `<div class="line" style="font-weight:600"><span>Summe an diesem Stopp</span><span class="a">${nf(sum(lines))} aUEC</span></div></div>`;
   }).join('');
 }
+// Reichweite: ein einzelner Quantum-Flug darf nicht weiter sein, als der Tank hergibt; die ganze Route evtl. mit Tankstopp
+function rangeWarn(c,o){
+  const q=o.q;if(!q.tank||!(q.fuel>0))return '';
+  const range=q.tank/q.fuel,far=c.legs.filter(l=>l&&l.m>range);
+  if(far.length)return `<div class="warn">Mit dem Quantum-Tank von ${nf(q.tank,1)} SCU kommst du etwa ${nf(range)} Gm weit, mindestens ein Flug dieser Route ist länger (bis ca. ${nf(Math.max(...far.map(l=>l.m)))} Gm). Du brauchst dafür einen Drive mit geringerem Verbrauch, einen größeren Tank oder einen Zwischenstopp.</div>`;
+  const fuel=c.r.d*q.fuel;
+  if(fuel>q.tank)return `<div class="warn">Die ganze Route braucht ca. ${nf(fuel,1)} SCU Treibstoff, dein Quantum-Tank fasst ${nf(q.tank,1)} SCU: unterwegs tanken.</div>`;
+  return '';
+}
 function compute(){
   const out=$('res');const {need,bad}=getNeed();const o=getOpts();
-  M={speed:o.speed,ovh:o.ovh,tun:o.tun,dwell:o.dwell};buildLegs();
+  M={speed:o.speed,ovh:o.ovh,tun:o.tun,dwell:o.dwell};buildLegs();showQ();
   const ids=Object.keys(need);
   const tot=ids.reduce((s,c)=>s+need[c],0);
   $('sum').textContent=ids.length?`${ids.length} Ware${ids.length>1?'n':''}, zusammen ${nf(tot,tot%1?1:0)} SCU`:'';
@@ -402,10 +462,12 @@ function compute(){
     const meta=[`Erlös ${nf(c.plan.rev)} aUEC (${nf(pct,1)} % des Maximums)`,`Strecke ${nf(c.r.d)} Gm${o.start?' ab Startpunkt':''}`,`Zeit ${fmtT(c.r.t)}`];
     if(oo.mode!=='net'||oo.cost>0||DM.some(v=>v>0))meta.push(`${nf(Math.round(c.net/(Math.max(c.r.t,1)/60)))} aUEC je Stunde`);
     if(useCost)meta.push(`Streckenkosten ${nf(c.cost)} aUEC`);
+    if(o.q.tank)meta.push(`Treibstoff ca. ${nf(c.r.d*o.q.fuel,2)} SCU`);
     if(c.r.e)meta.push('Strecke teilweise geschätzt');
     html+=`<div class="card${rec?' best':''}"><div class="chead"><div class="ctitle">${c.used.length} Stopp${c.used.length>1?'s':''}${rec?' · Empfehlung':''}${i===0&&!rec?' · wenigste Stopps':''}</div>`+
       `<div class="total">${nf(useCost?c.net:c.plan.rev)} aUEC${useCost?' <span class="sloc">netto</span>':''}</div></div>`+
       `<div class="meta">${meta.join(' · ')}</div>`+
+      rangeWarn(c,o)+
       (unsold.length?`<div class="warn">Nicht verkauft (keine ausreichende Nachfrage an diesen Stopps): ${unsold.join(', ')}</div>`:'')+
       stopsHtml(c.plan,c.order,c.legs,o)+`</div>`;
   });
@@ -464,11 +526,32 @@ def build(con, target):
         needed = 0
     dtxt = f"{len(dist)} von {needed} Ortspaaren" if needed else "noch keine"
 
+    # Quantum Drives, Schiff -> Standard-Drive, Treibstoffpreis
+    qd = [[r["class_name"], r["name"], r["size"], r["grade"] or "", r["class"] or "", r["fuel_scu_per_gm"],
+           round(r["speed_mms"], 1), r["spool_s"], r["cooldown_s"]]
+          for r in con.execute("SELECT * FROM quantum_drives ORDER BY size, speed_mms, name")]
+    ships, seen = [], set()
+    sql = ("SELECT v.name, v.qtank_scu, s.qd_class FROM vehicles v JOIN ship_qd s ON s.slug = v.slug "
+           "JOIN quantum_drives q ON q.class_name = s.qd_class "
+           "WHERE v.is_spaceship = 1 AND v.slug NOT LIKE '%-display' AND v.qtank_scu > 0 "
+           "ORDER BY v.name, v.msrp_usd DESC")
+    for r in con.execute(sql):
+        if r["name"] not in seen:
+            seen.add(r["name"])
+            ships.append([r["name"], r["qtank_scu"], r["qd_class"]])
+    row = con.execute("SELECT value FROM settings WHERE key='qfuel_price'").fetchone()
+    try:
+        qfp = float(row[0]) if row else 0.0
+    except (TypeError, ValueError):
+        qfp = 0.0
+    qftxt = f"aktuell {qfp:,.0f} aUEC je SCU".replace(",", ".") if qfp else "Preis unbekannt, Näherungswert 1.760 aUEC je SCU"
+
     def js(x):
         return json.dumps(x, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
 
     html = (PAGE.replace("__TERMINALS__", js(terms)).replace("__PLACES__", js(places))
             .replace("__COMMODITIES__", js(coms)).replace("__PRICES__", js(prices)).replace("__DISTS__", js(dist)).replace("__GATEWAYS__", js(gateways))
+            .replace("__QD__", js(qd)).replace("__SHIPS__", js(ships)).replace("__QFP__", js(qfp)).replace("__QFTXT__", qftxt)
             .replace("__UEXSTAND__", stand).replace("__DTXT__", dtxt)
             .replace("__STAND__", dt.datetime.now().strftime("%d.%m.%Y %H:%M")))
     os.makedirs(os.path.dirname(target), exist_ok=True)

@@ -201,6 +201,8 @@ def init_db(con):
                 con.execute(f"ALTER TABLE vehicles ADD COLUMN {col} TEXT")
         if "cargo_scu" not in cols:
             con.execute("ALTER TABLE vehicles ADD COLUMN cargo_scu REAL")
+        if "qtank_scu" not in cols:
+            con.execute("ALTER TABLE vehicles ADD COLUMN qtank_scu REAL")
         con.commit()
     mcols = {r[1] for r in con.execute("PRAGMA table_info(manual_ships)")}
     if mcols:
@@ -307,23 +309,28 @@ def update_vehicles(con):
                 scu = SCU_OVERRIDES[m["name"]]
             msrp = m.get("msrp")
             msrp = float(msrp) if msrp not in (None, "", 0) else None
+            try:
+                qtank = float((m.get("quantum") or {}).get("quantum_fuel_capacity"))
+                qtank = qtank if qtank > 0 else None
+            except (TypeError, ValueError):
+                qtank = None
             old = con.execute("SELECT msrp_usd FROM vehicles WHERE slug=?", (slug,)).fetchone()
             if old is not None and old["msrp_usd"] != msrp and msrp is not None:
                 con.execute("INSERT INTO price_history(kind,name,old_value,new_value,changed_at) VALUES ('usd',?,?,?,?)",
                             (m.get("name"), old["msrp_usd"], msrp, ts))
             con.execute(
                 """INSERT INTO vehicles(slug,name,manufacturer,manufacturer_code,is_spaceship,status,career,
-                                        foci,role,details,msrp_usd,updated_at,category,subcategory,size_label,cargo_scu)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+                                        foci,role,details,msrp_usd,updated_at,category,subcategory,size_label,cargo_scu,qtank_scu)
+                   VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
                    ON CONFLICT(slug) DO UPDATE SET name=excluded.name, manufacturer=excluded.manufacturer,
                      manufacturer_code=excluded.manufacturer_code, is_spaceship=excluded.is_spaceship,
                      status=excluded.status, career=excluded.career, foci=excluded.foci, role=excluded.role,
                      details=excluded.details, msrp_usd=excluded.msrp_usd, updated_at=excluded.updated_at,
                      category=excluded.category, subcategory=excluded.subcategory, size_label=excluded.size_label,
-                     cargo_scu=excluded.cargo_scu""",
+                     cargo_scu=excluded.cargo_scu, qtank_scu=excluded.qtank_scu""",
                 (slug, m.get("name"), man.get("name"), man.get("code"),
                  1 if m.get("is_spaceship") else 0, status, loc(m.get("type")) or m.get("career"),
-                 foci, role, details, msrp, ts, cat, sub, size, scu))
+                 foci, role, details, msrp, ts, cat, sub, size, scu, qtank))
             count += 1
         page += 1
     con.commit()
@@ -409,8 +416,9 @@ def run_once():
     con = connect()
     init_db(con)
     import uex
+    import qdrive
     for source, fn in (("fx", update_fx), ("vehicles", update_vehicles), ("ingame", update_ingame),
-                       ("uex", uex.update)):
+                       ("uex", uex.update), ("quantum", qdrive.update_drives)):
         try:
             msg = fn(con)
             log(f"{source}: OK - {msg}")
@@ -436,7 +444,22 @@ def run_once():
         log(f"frachtrechner: FEHLER - {e}")
     _values(con)
     _distances(con)
+    _shipdrives(con)
     con.close()
+
+
+def _shipdrives(con):
+    """Standard-Quantum-Drive der Schiffe nachladen (wenige je Lauf, jedes Schiff hoechstens woechentlich)."""
+    import qdrive
+    import tradepage
+    try:
+        msg = qdrive.update_ship_drives(con)
+        log(f"quantum-schiffe: OK - {msg}")
+        log_run(con, "quantum-schiffe", "ok", msg)
+        tradepage.build(con, TRADE_PATH)
+    except Exception as e:  # noqa: BLE001
+        log(f"quantum-schiffe: FEHLER - {e}")
+        log_run(con, "quantum-schiffe", "fehler", str(e))
 
 
 def _values(con):
@@ -483,6 +506,7 @@ def run_trade():
         log(f"frachtrechner: FEHLER - {e}")
     _values(con)
     _distances(con)
+    _shipdrives(con)
     con.close()
 
 
@@ -557,16 +581,18 @@ def main():
                 con = connect()
                 init_db(con)
                 _distances(con)
+                _shipdrives(con)
                 con.close()
             try:
                 import uex
+                import qdrive
                 con = connect()
-                open_pairs = uex.distance_todo(con)
+                open_pairs = uex.distance_todo(con) + qdrive.open_ships(con)
                 con.close()
             except Exception:  # noqa: BLE001
                 open_pairs = 0
             if open_pairs:
-                log(f"{open_pairs} Entfernungen offen, naechster Lauf in 10 Minuten")
+                log(f"{open_pairs} Entfernungen/Schiffsdaten offen, naechster Lauf in 10 Minuten")
                 time.sleep(600)
             else:
                 wait = min(last_trade + TRADE_INTERVAL_HOURS * 3600, last_full + INTERVAL_HOURS * 3600) - time.time()

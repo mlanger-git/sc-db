@@ -34,8 +34,29 @@ Systemwechsel laufen über die Gateway-Stationen (UEX-Terminals wie "Pyro Gatewa
 `<Ziel> Gateway (<Quellsystem>)`): Weg zum Gateway im Startsystem, Sprungtunnel, Weg vom Gateway im Zielsystem zum Stopp.
 Die Gateways werden auch ohne Verkaufspreise als Ort geführt, damit ihre Entfernungen geladen werden (`uex.place_reps`).
 
-Die Zeit ist eine grobe Schätzung: Entfernung / Quantum-Geschwindigkeit (Standard 200 Mm/s) + Zuschlag je Flug (1 Min)
-+ Tunnelzeit je Sprung (3 Min) + Zeit je Verkaufsstopp (5 Min); alle Werte sind auf der Seite unter "Zeit-Annahmen" einstellbar.
+Die Zeit ist eine grobe Schätzung: Entfernung / Quantum-Geschwindigkeit + Spool-Zeit des Drives + Zuschlag je Flug (0,8 Min)
++ Tunnelzeit je Sprung (3 Min) + Zeit je Verkaufsstopp (5 Min); Geschwindigkeit, Zuschlag, Tunnel- und Stoppzeit sind auf der Seite
+unter "Zeit-Annahmen" einstellbar (die Geschwindigkeit nur, wenn man die Reisedaten übersteuern will).
+
+### Reisedaten (Quantum Drive)
+Drei Stufen, auswählbar im Frachtrechner und im Browser gemerkt (`sc_fracht_v3`):
+1. **Durchschnitt** (Standard): Median über alle Quantum Drives (zuletzt ca. 262 Mm/s, 6,6 s Spool, 0,0167 SCU/Gm).
+2. **Mein Schiff**: der ab Werk verbaute Quantum Drive des Schiffs, dazu die Tankgröße (`quantum_fuel_capacity`).
+3. **Mein Schiff mit gewähltem Quantum Drive**: genau dieser Drive, die Tankgröße bleibt die des Schiffs.
+Streckenkosten (aUEC je Gm) = Verbrauch des Drives (SCU je Gm) x UEX-Preis für "Quantum Fuel" (`settings.qfuel_price`);
+ein eingetragener Wert im Feld übersteuert das. Mit gewähltem Schiff warnt die Seite, wenn ein einzelner Flug weiter ist als
+die Tankreichweite, oder wenn die ganze Route mehr Treibstoff braucht, als der Tank fasst.
+
+Daten (`app/qdrive.py`, Star Citizen Wiki API v2):
+* `quantum_drives`: alle Drives aus `items?filter[type]=QuantumDrive` (Geschwindigkeit `drive_speed` in m/s -> Mm/s,
+  `quantum_fuel_requirement` = SCU je Gm, Spool, Cooldown); bei jedem Vollauf. Unplausible Einträge werden verworfen.
+* `ship_qd`: Standard-Drive je Schiff aus `vehicles/<slug>?include=loadout` (rekursive Suche nach `type == QuantumDrive`).
+  Diese Antwort ist rund 0,5 MB groß, deshalb höchstens `QD_PER_RUN` (80) Schiffe je Lauf, jedes Schiff nur alle
+  `QD_MAX_AGE_DAYS` (7) Tage; ein Fehler wird erst am nächsten Tag wiederholt. Die erste Befüllung braucht einige Läufe
+  (Loop-Modus: alle 10 Minuten, solange Schiffe offen sind). Bis dahin ist "Mein Schiff" in der Seite deaktiviert.
+* `vehicles.qtank_scu`: Tankgröße aus der normalen Schiffsliste.
+* Log-Zeilen: `quantum: OK - N Quantum Drives`, `quantum-schiffe: OK - N Schiffe zugeordnet, ..., M noch offen`.
+
 Fehlt eine Entfernung, schätzt die Seite sie über bekannte dritte Orte (Dreiecksungleichung) und markiert die Etappe als "geschätzt".
 
 Die Ortsentfernungen (UEX `terminals_distances`, innerhalb eines Systems) liegen in `uex_distances` und werden je Lauf
