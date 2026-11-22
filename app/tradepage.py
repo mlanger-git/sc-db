@@ -381,7 +381,7 @@ function fmtT(m){m=Math.round(m);if(m<1)return 'unter 1 Min';if(m<60)return `ca.
 function legTxt(L,i,o){
   if(!L)return '';
   let s;
-  if(L.cross)s=` · <b>Systemwechsel</b> über ${esc(L.g1!=null?PL[L.g1].pl:'den Jump Point')} · <b>${nf(L.d)} Gm</b>, ${fmtT(L.t)}`;
+  if(L.cross)s=` · <b>Systemwechsel</b> über ${esc(L.g1!=null?PL[L.g1].pl:'den Jump Point')} · <b>${nf(L.d)} Gm</b>, ${fmtT(L.t)} (davon Sprungtunnel ${nf(M.tun,M.tun%1?1:0)} Min${o&&o.tf>0?`, ${nf(o.tf,2)} SCU Treibstoff`:''})`;
   else if(L.d===0)s=i===0?' · am Startpunkt':' · am selben Ort';
   else s=` · <b>${nf(L.d)} Gm</b>, ${fmtT(L.t)} ${i===0?'vom Startpunkt':'vom vorherigen Stopp'}`;
   return s+(L.e?' <span class="note">(geschätzt)</span>':'');
