@@ -37,6 +37,7 @@ PAGE = r'''<!DOCTYPE html>
   .ctitle { font-family:'Rajdhani',sans-serif; font-size:1.05rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
   .total { font-family:'Rajdhani',sans-serif; font-size:1.25rem; font-weight:700; color:#15803d; }
   .meta { font-size:.76rem; color:#6b7a90; margin-bottom:10px; }
+  .meta b { color:#1c2733; font-size:.84rem; }
   .stop { border-top:1px solid #edf1f6; padding:9px 0 3px; }
   .sname { font-weight:600; } .sloc { font-size:.74rem; color:#6b7a90; }
   .line { display:flex; justify-content:space-between; gap:14px; font-size:.84rem; padding:2px 0 2px 12px; flex-wrap:wrap; }
@@ -469,7 +470,7 @@ function compute(){
     const unsold=c.plan.det.filter(d=>d.f.rest>0.0001).map(d=>`${nf(d.f.rest,d.f.rest%1?1:0)} SCU ${esc(CM[d.cid].n)}`);
     const rec=shown.length>1&&c.v===bestV;
     const pct=mx.rev>0?c.plan.rev/mx.rev*100:100;
-    const meta=[`Erlös ${nf(c.plan.rev)} aUEC (${nf(pct,1)} % des Maximums)`,`Strecke ${nf(c.r.d)} Gm${o.start?' ab Startpunkt':''}`,`Zeit ${fmtT(c.r.t)} (Flug ${fmtT(c.r.t-M.dwell*c.order.length-M.tun*c.r.ch)} + Verkauf ${nf(M.dwell*c.order.length)} Min${c.r.ch>0?` + Sprungtunnel ${nf(M.tun*c.r.ch,M.tun%1?1:0)} Min`:''})`];
+    const meta=[`<b>Erlös ${nf(c.plan.rev)} aUEC</b> (${nf(pct,1)} % des Maximums)`,`<b>Strecke ${nf(c.r.d)} Gm</b>${o.start?' ab Startpunkt':''}`,`<b>Zeit ${fmtT(c.r.t)}</b> (Flug ${fmtT(c.r.t-M.dwell*c.order.length-M.tun*c.r.ch)} + Verkauf ${nf(M.dwell*c.order.length)} Min${c.r.ch>0?` + Sprungtunnel ${nf(M.tun*c.r.ch,M.tun%1?1:0)} Min`:''})`];
     if(oo.mode!=='net'||oo.cost>0||DM.some(v=>v>0))meta.push(`${nf(Math.round(c.net/(Math.max(c.r.t,1)/60)))} aUEC je Stunde`);
     if(useCost)meta.push(`Streckenkosten ${nf(c.cost)} aUEC`);
     if(o.q.tank)meta.push(`Treibstoff ca. ${nf(c.r.d*o.q.fuel+c.r.ch*o.tf,2)} SCU`);
