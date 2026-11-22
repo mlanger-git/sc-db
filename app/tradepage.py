@@ -75,7 +75,7 @@ PAGE = r'''<!DOCTYPE html>
   <div class="opts" style="margin-top:10px">
     <label>Reisedaten <select id="qm"><option value="avg" selected>Durchschnitt aller Quantum Drives</option><option value="ship">Mein Schiff (Standard-Quantum-Drive)</option><option value="drive">Mein Schiff mit gewähltem Quantum Drive</option></select></label>
     <label id="qsl" style="display:none">Schiff <select id="qs"></select></label>
-    <label id="qdl" style="display:none">Quantum Drive <select id="qd"></select></label>
+    <label id="qdl" style="display:none">Quantum Drive <span id="qdsz"></span> <select id="qd"></select></label>
   </div>
   <div class="sum" id="qinfo"></div>
   <div class="opts" style="margin-top:10px">
@@ -180,7 +180,16 @@ function fillStart(sel){
 }
 const dlabel=q=>`${q[1]} · S${q[2]}${q[3]?' '+q[3]:''}${q[4]&&q[4]!=='None'?' '+q[4]:''} · ${nf(q[6])} Mm/s`;
 $('qs').innerHTML=SH.slice().sort((a,b)=>a[0].localeCompare(b[0],'de')).map(x=>`<option value="${esc(x[0])}">${esc(x[0])}</option>`).join('');
-$('qd').innerHTML=QD.slice().sort((a,b)=>a[2]-b[2]||a[6]-b[6]||a[1].localeCompare(b[1])).map(q=>`<option value="${esc(q[0])}">${esc(dlabel(q))}</option>`).join('');
+// Quantum-Drive-Auswahl: nur Drives in der Größe des Standard-Drives des gewählten Schiffs (andere passen nicht hinein)
+function fillDrives(keep){
+  const sh=SHM[$('qs').value],std=sh&&QDM[sh[2]]?QDM[sh[2]]:null;
+  const list=QD.filter(q=>!std||q[2]===std[2]).sort((a,b)=>a[2]-b[2]||a[6]-b[6]||a[1].localeCompare(b[1]));
+  $('qd').innerHTML=list.map(q=>`<option value="${esc(q[0])}">${esc(dlabel(q))}</option>`).join('');
+  const ok=c=>c&&list.some(q=>q[0]===c);
+  $('qd').value=ok(keep)?keep:(std&&ok(std[0])?std[0]:(list[0]?list[0][0]:''));
+  $('qdsz').textContent=std?`(nur Größe ${std[2]}, passend zu ${$('qs').value})`:'';
+}
+fillDrives();
 [...$('qm').options].forEach(op=>{if(op.value==='ship'&&!SH.length)op.disabled=true;if(op.value==='drive'&&!QD.length)op.disabled=true;});
 function qmode(){const v=$('qm').value;return (v==='ship'&&!SH.length)||(v==='drive'&&!QD.length)?'avg':v;}
 // gewählte Reisedaten: Geschwindigkeit (Mm/s), Treibstoff (SCU je Gm), Spool (s), Tankgröße (SCU, null = unbekannt)
@@ -216,8 +225,8 @@ $('clr').onclick=()=>{$('rows').innerHTML='';addRow();schedule();};
 $('os').addEventListener('change',schedule);
 ['od','oi','oa','oc','om','oq','ov','ot','of','omr','ow','st','qm','qs','qd'].forEach(i=>$(i).addEventListener('input',schedule));
 // Schiff gewechselt: im Modus „gewählter Drive“ zuerst dessen Standard-Drive vorwählen
-$('qs').addEventListener('input',()=>{const sh=SHM[$('qs').value];if(sh&&QDM[sh[2]]&&$('qm').value==='drive')$('qd').value=sh[2];});
-$('qm').addEventListener('input',()=>{if($('qm').value==='drive'){const sh=SHM[$('qs').value];if(sh&&QDM[sh[2]])$('qd').value=sh[2];}});
+$('qs').addEventListener('input',()=>fillDrives());
+$('qm').addEventListener('input',()=>{if($('qm').value==='drive')fillDrives();});
 ['qm','qs','qd'].forEach(i=>$(i).addEventListener('input',showQ));
 document.addEventListener('input',e=>{if(e.target.matches('.cn,.cs'))schedule();});
 
@@ -244,7 +253,7 @@ function load(){try{let s=JSON.parse(localStorage.getItem(LS)||'null'),old=false
   (s.rows||[]).forEach(r=>addRow(r[0],r[1]));$('od').checked=s.od!==false;$('oi').checked=!!s.oi;if(s.oa!=null)$('oa').value=s.oa;
   if(!old&&s.oc!=null&&s.oc!=='')$('oc').value=s.oc;
   if(!old){if(['avg','ship','drive'].includes(s.qm)&&!$('qm').querySelector(`option[value=${s.qm}]`).disabled)$('qm').value=s.qm;
-    if(s.qs&&SHM[s.qs])$('qs').value=s.qs;if(s.qd&&QDM[s.qd])$('qd').value=s.qd;}
+    if(s.qs&&SHM[s.qs])$('qs').value=s.qs;fillDrives(s.qd);}
   if(['profit','net','time'].includes(s.om))$('om').value=s.om;
   (old?['ow']:['oq','ov','ot','ow']).forEach(k=>{if(k==='ot'&&s[k]==='3')return;   // 3 Min war der frühere Standardwert
     if(s[k]!=null&&s[k]!=='')$(k).value=s[k];});

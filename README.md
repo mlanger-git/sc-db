@@ -45,7 +45,7 @@ mittlere Tankgröße der Schiffe. Der Wert geht in Treibstoff, Kosten (zum Quant
 Drei Stufen, auswählbar im Frachtrechner und im Browser gemerkt (`sc_fracht_v3`):
 1. **Durchschnitt** (Standard): Median über alle Quantum Drives (zuletzt ca. 262 Mm/s, 6,6 s Spool, 0,0167 SCU/Gm).
 2. **Mein Schiff**: der ab Werk verbaute Quantum Drive des Schiffs, dazu die Tankgröße (`quantum_fuel_capacity`).
-3. **Mein Schiff mit gewähltem Quantum Drive**: genau dieser Drive, die Tankgröße bleibt die des Schiffs.
+3. **Mein Schiff mit gewähltem Quantum Drive**: genau dieser Drive, die Tankgröße bleibt die des Schiffs. Zur Auswahl stehen nur Drives in der Größe des Standard-Drives des Schiffs (andere passen nicht hinein); ist der Standard-Drive eines Schiffs unbekannt, werden alle Drives angeboten.
 Streckenkosten (aUEC je Gm) = Verbrauch des Drives (SCU je Gm) x UEX-Preis für "Quantum Fuel" (`settings.qfuel_price`);
 ein eingetragener Wert im Feld übersteuert das. Mit gewähltem Schiff warnt die Seite, wenn ein einzelner Flug weiter ist als
 die Tankreichweite, oder wenn die ganze Route mehr Treibstoff braucht, als der Tank fasst.
