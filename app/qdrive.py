@@ -93,9 +93,16 @@ def find_drive(obj):
     return None
 
 
+def _blocked(con):
+    r = con.execute("SELECT value FROM settings WHERE key='qd_blocked_until'").fetchone()
+    return bool(r and r[0] > dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+
+
 def update_ship_drives(con, limit=None):
     """Holt fuer Schiffe ohne frischen Eintrag den Standard-Quantum-Drive. Gibt eine Meldung zurueck."""
     limit = QD_PER_RUN if limit is None else limit
+    if _blocked(con):
+        return "pausiert (zuletzt wurde kein Quantum Drive gefunden), naechster Versuch morgen"
     known = {r[0] for r in con.execute("SELECT class_name FROM quantum_drives")}
     if not known:
         return "keine Quantum Drives in der Datenbank, uebersprungen"
@@ -107,6 +114,7 @@ def update_ship_drives(con, limit=None):
            ORDER BY (s.slug IS NULL) DESC, s.fetched_at, v.slug""", (cutoff,))]
     total = len(todo)
     done = fail = nodrive = 0
+    nodrive_slugs = []
     for slug in todo[:limit]:
         try:
             data = _get(f"{API}/vehicles/{slug}", {"include": "loadout"}, timeout=180)
@@ -125,17 +133,29 @@ def update_ship_drives(con, limit=None):
             con.execute("INSERT OR REPLACE INTO ship_qd(slug,qd_class,qd_name,fetched_at) VALUES (?,?,?,?)", (slug, d[0], d[1], ts))
             done += 1
         else:
-            # kein (bekannter) Quantum Drive: Schiff trotzdem vermerken, damit es nicht jeden Lauf neu geholt wird
-            con.execute("INSERT OR REPLACE INTO ship_qd(slug,qd_class,qd_name,fetched_at) VALUES (?,NULL,NULL,?)", (slug, ts))
+            nodrive_slugs.append(slug)
             nodrive += 1
         con.commit()
         time.sleep(QD_PAUSE)
+    # Fand kein einziges Schiff einen Drive, ist wohl das API-Format anders: Fehler melden, nichts vermerken
+    if nodrive >= 5 and done == 0:
+        until = (dt.datetime.now() + dt.timedelta(days=1)).strftime("%Y-%m-%d %H:%M:%S")
+        con.execute("INSERT OR REPLACE INTO settings(key,value) VALUES ('qd_blocked_until',?)", (until,))
+        con.commit()
+        raise RuntimeError(f"Bei {nodrive} Schiffen wurde kein Quantum Drive gefunden, API-Format geaendert?")
+    # kein (bekannter) Quantum Drive: Schiff trotzdem vermerken, damit es nicht jeden Lauf neu geholt wird
+    ts = dt.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    con.executemany("INSERT OR REPLACE INTO ship_qd(slug,qd_class,qd_name,fetched_at) VALUES (?,NULL,NULL,?)",
+                    [(x, ts) for x in nodrive_slugs])
+    con.commit()
     left = max(total - limit, 0)
     return f"{done} Schiffe zugeordnet, {nodrive} ohne Quantum Drive, {fail} Fehler (morgen neu), {left} noch offen"
 
 
 def open_ships(con):
     """Anzahl Schiffe, deren Quantum Drive noch (oder wieder) geholt werden muss."""
+    if _blocked(con):
+        return 0
     cutoff = (dt.datetime.now() - dt.timedelta(days=QD_MAX_AGE_DAYS)).strftime("%Y-%m-%d %H:%M:%S")
     return con.execute(
         """SELECT COUNT(*) FROM vehicles v LEFT JOIN ship_qd s ON s.slug = v.slug
