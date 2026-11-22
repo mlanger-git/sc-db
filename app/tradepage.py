@@ -65,7 +65,7 @@ PAGE = r'''<!DOCTYPE html>
 <div class="panel">
   <h2>Einstellungen</h2>
   <div class="opts">
-    <span class="syl">Systeme <span id="os"></span></span>
+    <span class="syl">Zielsysteme (Verkauf) <span id="os"></span></span>
     <label>Startpunkt <select id="st"></select></label>
     <label>Optimieren nach <select id="om"><option value="profit" selected>Gewinn je Stunde</option><option value="net">Netto-Erlös</option><option value="time">Kürzeste Zeit</option></select></label>
     <label>Streckenkosten <input type="number" id="oc" min="0" step="1" placeholder="auto" style="width:120px"> aUEC je Gm</label>
@@ -91,11 +91,11 @@ PAGE = r'''<!DOCTYPE html>
       <label>Zeit je Verkaufsstopp <input type="number" id="ow" min="0" step="1" value="5" style="width:70px"> Min</label>
     </div>
   </details>
-  <div class="hint">Als Startpunkt kannst du einen Himmelskörper (z. B. ArcCorp) oder einen Ort wählen. Die Route läuft vom Startpunkt über die Verkaufsstopps, ein Rückweg ist nicht eingerechnet. Stopps im selben System werden zusammen angefahren, die Reihenfolge ist die mit der kürzesten Zeit.
+  <div class="hint">Als Startpunkt kannst du einen Himmelskörper (z. B. ArcCorp) oder einen Ort in jedem System wählen, unabhängig von den Zielsystemen; diese bestimmen nur, wo verkauft wird. Die Route läuft vom Startpunkt über die Verkaufsstopps, ein Rückweg ist nicht eingerechnet. Stopps im selben System werden zusammen angefahren, die Reihenfolge ist die mit der kürzesten Zeit.
   <b>Optimieren nach</b>: „Gewinn je Stunde“ vergleicht Erlös und Reisezeit, „Netto-Erlös“ zieht nur die Streckenkosten ab, „Kürzeste Zeit“ verkauft die Fracht so schnell wie möglich.
   <b>Reisedaten</b>: „Durchschnitt“ rechnet mit den Mittelwerten aller Quantum Drives (Geschwindigkeit, Spool-Zeit, Treibstoffverbrauch), ohne dass du etwas eingeben musst. Mit „Mein Schiff“ nimmt der Rechner den Quantum Drive, den das Schiff ab Werk hat, und mit „gewähltem Quantum Drive“ genau den Drive, den du eingebaut hast. Bei einem gewählten Schiff prüft der Rechner auch, ob der Quantum-Tank für die Etappen reicht. Deine Auswahl wird im Browser gemerkt.
   Die <b>Streckenkosten</b> sind die Treibstoffkosten je Gigameter (Verbrauch des Quantum Drives × Preis für Quantum Fuel laut UEX: __QFTXT__). Lässt du das Feld leer, rechnet die Seite damit; trägst du einen Wert ein, gilt dein Wert (z. B. um Risiko mit einzupreisen). Je höher der Wert, desto eher wählt der Rechner nahe Stopps, bei 0 zählt nur der Erlös.
-  Ein „Stopp“ ist ein Ort (Station, Stadt oder Außenposten); mehrere Terminals am selben Ort zählen als ein Stopp. Mehrere Systeme kannst du gleichzeitig anhaken; die Entfernungen innerhalb eines Systems sind UEX-Schätzungen (geladen: __DTXT__). Bei einem Systemwechsel fliegt der Rechner zum Jump Point (Gateway-Station), springt und fliegt vom Gateway im Zielsystem zum Stopp.
+  Ein „Stopp“ ist ein Ort (Station, Stadt oder Außenposten); mehrere Terminals am selben Ort zählen als ein Stopp. Bei den Zielsystemen (Verkauf) kannst du mehrere gleichzeitig anhaken; die Entfernungen innerhalb eines Systems sind UEX-Schätzungen (geladen: __DTXT__). Bei einem Systemwechsel fliegt der Rechner zum Jump Point (Gateway-Station), springt und fliegt vom Gateway im Zielsystem zum Stopp.
   Die <b>Reisezeit</b> ist eine grobe Schätzung aus Entfernung, Quantum-Geschwindigkeit, Spool-Zeit des Drives plus einem Zuschlag je Flug, der Tunnelzeit und der Zeit je Verkaufsstopp; die Werte kannst du unter „Zeit-Annahmen“ anpassen. Fehlt UEX eine Entfernung, rechnet der Rechner mit dem Mittelwert und markiert die Etappe als „geschätzt“.</div>
 </div>
 
@@ -163,7 +163,8 @@ $('cl').innerHTML=C.map(c=>`<option value="${esc(c.n)}">`).join('');
 $('os').innerHTML=SYS.map((x,i)=>`<label class="sy"><input type="checkbox" value="${esc(x)}"${i===0?' checked':''}> ${esc(x)}</label>`).join(' ');
 const selSys=()=>[...document.querySelectorAll('#os input:checked')].map(i=>i.value);
 function fillStart(sel){
-  const sy=selSys(),multi=sy.length>1;let h='<option value="">(kein Startpunkt)</option>';
+  // Startpunkte: alle Systeme, unabhängig von den gewählten Zielsystemen
+  const sy=SYS,multi=sy.length>1;let h='<option value="">(kein Startpunkt)</option>';
   sy.forEach(sys=>{
     const bodies=[...new Set(PL.filter(p=>p.s===sys&&p.b).map(p=>p.b))].sort((a,b)=>a.localeCompare(b,'de'));
     const places=PL.map((p,i)=>[p,i]).filter(([p])=>p.s===sys).sort((a,b)=>a[0].pl.localeCompare(b[0].pl,'de'));
@@ -209,7 +210,7 @@ function addRow(name='',scu=''){
 }
 $('add').onclick=()=>{addRow();};
 $('clr').onclick=()=>{$('rows').innerHTML='';addRow();schedule();};
-$('os').addEventListener('change',()=>{fillStart($('st').value);schedule();});
+$('os').addEventListener('change',schedule);
 ['od','oi','oa','oc','om','oq','ov','ot','of','ow','st','qm','qs','qd'].forEach(i=>$(i).addEventListener('input',schedule));
 // Schiff gewechselt: im Modus „gewählter Drive“ zuerst dessen Standard-Drive vorwählen
 $('qs').addEventListener('input',()=>{const sh=SHM[$('qs').value];if(sh&&QDM[sh[2]]&&$('qm').value==='drive')$('qd').value=sh[2];});
