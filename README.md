@@ -35,8 +35,10 @@ Systemwechsel laufen über die Gateway-Stationen (UEX-Terminals wie "Pyro Gatewa
 Die Gateways werden auch ohne Verkaufspreise als Ort geführt, damit ihre Entfernungen geladen werden (`uex.place_reps`).
 
 Die Zeit ist eine grobe Schätzung: Entfernung / Quantum-Geschwindigkeit + Spool-Zeit des Drives + Zuschlag je Flug (0,8 Min)
-+ Tunnelzeit je Sprung (3 Min) + Zeit je Verkaufsstopp (5 Min); Geschwindigkeit, Zuschlag, Tunnel- und Stoppzeit sind auf der Seite
++ Tunnelzeit je Sprung (5 Min) + Zeit je Verkaufsstopp (5 Min); Geschwindigkeit, Zuschlag, Tunnel- und Stoppzeit sind auf der Seite
 unter "Zeit-Annahmen" einstellbar (die Geschwindigkeit nur, wenn man die Reisedaten übersteuern will).
+Der Sprungtunnel verbraucht laut CIG Quantum Fuel (feste Menge je Jump Point, beim Einstellen im Spiel sichtbar); die Menge ist uns nicht bekannt,
+deshalb gibt es unter "Zeit-Annahmen" das Feld "Treibstoff je Sprungtunnel" (SCU, Standard 0); der Wert geht in Treibstoff, Kosten und Reichweitenwarnung ein.
 
 ### Reisedaten (Quantum Drive)
 Drei Stufen, auswählbar im Frachtrechner und im Browser gemerkt (`sc_fracht_v3`):

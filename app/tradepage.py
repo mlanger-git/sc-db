@@ -86,7 +86,8 @@ PAGE = r'''<!DOCTYPE html>
     <div class="opts" style="margin-top:8px">
       <label>Quantum-Geschwindigkeit <input type="number" id="oq" min="20" step="10" placeholder="aus Reisedaten" style="width:110px"> Mm/s</label>
       <label>Zuschlag je Flug (zusätzlich zur Spool-Zeit) <input type="number" id="ov" min="0" step="0.5" value="0.8" style="width:70px"> Min</label>
-      <label>Dauer Sprungtunnel <input type="number" id="ot" min="0" step="0.5" value="3" style="width:70px"> Min</label>
+      <label>Dauer Sprungtunnel <input type="number" id="ot" min="0" step="0.5" value="5" style="width:70px"> Min</label>
+      <label>Treibstoff je Sprungtunnel <input type="number" id="of" min="0" step="0.1" value="0" style="width:70px"> SCU</label>
       <label>Zeit je Verkaufsstopp <input type="number" id="ow" min="0" step="1" value="5" style="width:70px"> Min</label>
     </div>
   </details>
@@ -119,7 +120,7 @@ for(let i=0;i<N;i++)DM[i*N+i]=0;
 DT.forEach(([i,j,d])=>{DM[i*N+j]=d;DM[j*N+i]=d;});
 // Notwert für unbekannte Strecken ohne Anhaltspunkt: Median aller bekannten Entfernungen
 let MED=10;{const a=DT.map(x=>x[2]).filter(d=>d>0).sort((x,y)=>x-y);if(a.length)MED=a[a.length>>1];}
-let M={speed:262,ovh:1,tun:3,dwell:5};   // QT-Geschwindigkeit Mm/s, Zuschlag je Flug, Tunnelzeit, Zeit je Verkaufsstopp (Minuten)
+let M={speed:262,ovh:1,tun:5,dwell:5};   // QT-Geschwindigkeit Mm/s, Zuschlag je Flug, Tunnelzeit (Standard 5), Zeit je Verkaufsstopp (Minuten)
 let DX=DM,TX=DM,EX=DM;
 const QDM={};QD.forEach(q=>QDM[q[0]]=q);
 const SHM={};SH.forEach(x=>SHM[x[0]]=x);
@@ -194,6 +195,7 @@ function showQ(){
     +` · Treibstoffkosten ca. ${nf(auto,auto<10?1:0)} aUEC/Gm${QFP>0?'':' (Preis geschätzt)'}`;
   if(q.tank)t+=` · Tank ${nf(q.tank,1)} SCU, Reichweite ca. ${nf(q.tank/q.fuel)} Gm`;
   if(m==='ship'&&!q.drive)t+=' · für dieses Schiff ist kein Quantum Drive bekannt, es gelten die Durchschnittswerte';
+  if(!(+$('of').value>0))t+=' · Der Treibstoff für den Sprungtunnel ist nicht eingerechnet (Wert unter „Zeit-Annahmen“ eintragen; das Spiel zeigt ihn beim Einstellen des Jump Points).';
   if(!SH.length)t+=' · Die Zuordnung Schiff → Quantum Drive wird noch geladen (der Updater holt je Lauf nur einen Teil).';
   $('qinfo').textContent=t;
 }
@@ -207,7 +209,7 @@ function addRow(name='',scu=''){
 $('add').onclick=()=>{addRow();};
 $('clr').onclick=()=>{$('rows').innerHTML='';addRow();schedule();};
 $('os').addEventListener('change',()=>{fillStart($('st').value);schedule();});
-['od','oi','oa','oc','om','oq','ov','ot','ow','st','qm','qs','qd'].forEach(i=>$(i).addEventListener('input',schedule));
+['od','oi','oa','oc','om','oq','ov','ot','of','ow','st','qm','qs','qd'].forEach(i=>$(i).addEventListener('input',schedule));
 // Schiff gewechselt: im Modus „gewählter Drive“ zuerst dessen Standard-Drive vorwählen
 $('qs').addEventListener('input',()=>{const sh=SHM[$('qs').value];if(sh&&QDM[sh[2]]&&$('qm').value==='drive')$('qd').value=sh[2];});
 $('qm').addEventListener('input',()=>{if($('qm').value==='drive'){const sh=SHM[$('qs').value];if(sh&&QDM[sh[2]])$('qd').value=sh[2];}});
@@ -218,7 +220,7 @@ const numIn=(id,def,min)=>{const v=parseFloat($(id).value);return isNaN(v)?def:M
 function getOpts(){const q=qdSel(),oc=$('oc').value.trim();
   return {sys:selSys(),demand:$('od').checked,illegal:$('oi').checked,age:+$('oa').value,start:$('st').value,q,
   cost:oc===''?q.fuel*FP:Math.max(0,+oc||0),
-  mode:$('om').value,speed:numIn('oq',q.speed,20),ovh:numIn('ov',0.8,0)+q.spool/60,tun:numIn('ot',3,0),dwell:numIn('ow',5,0)};}
+  mode:$('om').value,speed:numIn('oq',q.speed,20),ovh:numIn('ov',0.8,0)+q.spool/60,tun:numIn('ot',5,0),tf:numIn('of',0,0),dwell:numIn('ow',5,0)};}
 function getNeed(){const need={};let bad=false;
   document.querySelectorAll('#rows .row').forEach(r=>{const n=r.querySelector('.cn'),s=r.querySelector('.cs');
     const nm=n.value.trim().toLowerCase(),q=parseFloat(s.value);
@@ -230,7 +232,7 @@ function getNeed(){const need={};let bad=false;
     need[c.id]=(need[c.id]||0)+q;});
   return {need,bad};}
 function save(){try{const o=getOpts();localStorage.setItem(LS,JSON.stringify({rows:[...document.querySelectorAll('#rows .row')].map(r=>[r.querySelector('.cn').value,r.querySelector('.cs').value]),
-  od:o.demand,oi:o.illegal,oa:$('oa').value,os:o.sys,st:o.start,oc:$('oc').value,om:$('om').value,oq:$('oq').value,ov:$('ov').value,ot:$('ot').value,ow:$('ow').value,qm:$('qm').value,qs:$('qs').value,qd:$('qd').value}));}catch(e){}}
+  od:o.demand,oi:o.illegal,oa:$('oa').value,os:o.sys,st:o.start,oc:$('oc').value,om:$('om').value,oq:$('oq').value,ov:$('ov').value,ot:$('ot').value,of:$('of').value,ow:$('ow').value,qm:$('qm').value,qs:$('qs').value,qd:$('qd').value}));}catch(e){}}
 function load(){try{let s=JSON.parse(localStorage.getItem(LS)||'null'),old=false;
   if(!s){s=JSON.parse(localStorage.getItem(LS_OLD)||'null');old=true;}   // alte Version: Waren, Systeme, Startpunkt übernehmen; Kosten und Geschwindigkeit gelten neu
   if(!s)return false;
@@ -239,7 +241,8 @@ function load(){try{let s=JSON.parse(localStorage.getItem(LS)||'null'),old=false
   if(!old){if(['avg','ship','drive'].includes(s.qm)&&!$('qm').querySelector(`option[value=${s.qm}]`).disabled)$('qm').value=s.qm;
     if(s.qs&&SHM[s.qs])$('qs').value=s.qs;if(s.qd&&QDM[s.qd])$('qd').value=s.qd;}
   if(['profit','net','time'].includes(s.om))$('om').value=s.om;
-  (old?['ot','ow']:['oq','ov','ot','ow']).forEach(k=>{if(s[k]!=null&&s[k]!=='')$(k).value=s[k];});
+  (old?['ow']:['oq','ov','ot','of','ow']).forEach(k=>{if(k==='ot'&&s[k]==='3')return;   // 3 Min war der frühere Standardwert
+    if(s[k]!=null&&s[k]!=='')$(k).value=s[k];});
   const ss=Array.isArray(s.os)?s.os:(s.os?[s.os]:[]);
   if(ss.some(x=>SYS.includes(x)))document.querySelectorAll('#os input').forEach(i=>{i.checked=ss.includes(i.value);});
   fillStart(s.st);return true;}catch(e){return false;}}
@@ -318,7 +321,7 @@ function bestRoute(S,st,s0){
 }
 // Zielwert je nach Modus: Gewinn je Stunde, Netto-Erlös oder (bei kürzester Zeit) erst möglichst alles verkaufen, dann Zeit
 function score(rev,rest,r,o){
-  const net=rev-o.cost*r.d,hrs=Math.max(r.t,1)/60;
+  const net=rev-o.cost*r.d-r.ch*o.tf*FP,hrs=Math.max(r.t,1)/60;
   return o.mode==='time'?-rest*1e9-r.t+rev*1e-9:o.mode==='net'?net:net/hrs;
 }
 function candidates(need,off,o,st){
@@ -352,7 +355,7 @@ function evalUsed(S,need,off){
 }
 function bestExact(k,cands,need,off,o,st,s0){
   const kk=Math.min(k,cands.length);let bestV=-Infinity,bestS=null;
-  const simple=o.mode==='net'&&!(o.cost>0);
+  const simple=o.mode==='net'&&!(o.cost>0)&&!(o.tf>0);
   combos(cands,kk,S=>{
     const e=evalUsed(S,need,off);let v;
     if(simple)v=e.rev;else v=score(e.rev,e.rest,bestRoute(e.used,st,s0),o);
@@ -403,7 +406,7 @@ function rangeWarn(c,o){
   const q=o.q;if(!q.tank||!(q.fuel>0))return '';
   const range=q.tank/q.fuel,far=c.legs.filter(l=>l&&l.m>range);
   if(far.length)return `<div class="warn">Mit dem Quantum-Tank von ${nf(q.tank,1)} SCU kommst du etwa ${nf(range)} Gm weit, mindestens ein Flug dieser Route ist länger (bis ca. ${nf(Math.max(...far.map(l=>l.m)))} Gm). Du brauchst dafür einen Drive mit geringerem Verbrauch, einen größeren Tank oder einen Zwischenstopp.</div>`;
-  const fuel=c.r.d*q.fuel;
+  const fuel=c.r.d*q.fuel+c.r.ch*o.tf;
   if(fuel>q.tank)return `<div class="warn">Die ganze Route braucht ca. ${nf(fuel,1)} SCU Treibstoff, dein Quantum-Tank fasst ${nf(q.tank,1)} SCU: unterwegs tanken.</div>`;
   return '';
 }
@@ -441,7 +444,7 @@ function compute(){
     const r=bestRoute(used,st,s0);
     const order=r.order;
     const legs=order.map((p,i)=>i===0?(st?legInfo(st.q[p],p):null):legInfo(order[i-1],p));
-    const cost=oo.cost*r.d;
+    const cost=oo.cost*r.d+r.ch*oo.tf*FP;
     cards.push({plan,used,order,r,legs,cost,net:plan.rev-cost,v:score(plan.rev,plan.rest,r,oo),sig});
   }
   for(let k=1;k<=3;k++){
@@ -454,7 +457,7 @@ function compute(){
   const shown=cards.sort((a,b)=>a.used.length-b.used.length||b.v-a.v);
   const bestV=Math.max(...shown.map(c=>c.v));
   html+=warns.map(w=>`<div class="warn">${w}</div>`).join('');
-  const useCost=oo.cost>0;
+  const useCost=oo.cost>0||oo.tf>0;
   shown.forEach((c,i)=>{
     const unsold=c.plan.det.filter(d=>d.f.rest>0.0001).map(d=>`${nf(d.f.rest,d.f.rest%1?1:0)} SCU ${esc(CM[d.cid].n)}`);
     const rec=shown.length>1&&c.v===bestV;
@@ -462,7 +465,7 @@ function compute(){
     const meta=[`Erlös ${nf(c.plan.rev)} aUEC (${nf(pct,1)} % des Maximums)`,`Strecke ${nf(c.r.d)} Gm${o.start?' ab Startpunkt':''}`,`Zeit ${fmtT(c.r.t)} (Flug ${fmtT(c.r.t-M.dwell*c.order.length)} + ${nf(M.dwell*c.order.length)} Min Verkauf)`];
     if(oo.mode!=='net'||oo.cost>0||DM.some(v=>v>0))meta.push(`${nf(Math.round(c.net/(Math.max(c.r.t,1)/60)))} aUEC je Stunde`);
     if(useCost)meta.push(`Streckenkosten ${nf(c.cost)} aUEC`);
-    if(o.q.tank)meta.push(`Treibstoff ca. ${nf(c.r.d*o.q.fuel,2)} SCU`);
+    if(o.q.tank)meta.push(`Treibstoff ca. ${nf(c.r.d*o.q.fuel+c.r.ch*o.tf,2)} SCU`);
     if(c.r.e)meta.push('Strecke teilweise geschätzt');
     html+=`<div class="card${rec?' best':''}"><div class="chead"><div class="ctitle">${c.used.length} Stopp${c.used.length>1?'s':''}${rec?' · Empfehlung':''}${i===0&&!rec?' · wenigste Stopps':''}</div>`+
       `<div class="total">${nf(useCost?c.net:c.plan.rev)} aUEC${useCost?' <span class="sloc">netto</span>':''}</div></div>`+
