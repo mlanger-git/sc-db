@@ -24,7 +24,8 @@ PAGE = r'''<!DOCTYPE html>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Exo+2:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background:#f5f7fa; color:#1a2030; font-family:'Exo 2',sans-serif; padding:28px 28px 48px; max-width:1600px; }
+  html { font-size:115%; }   /* alle Schriftgrößen sind in rem: hier zentral skalieren, gleich wie im Frachtrechner */
+  body { background:#f5f7fa; color:#1a2030; font-family:'Exo 2',sans-serif; padding:28px 28px 48px; max-width:none; }
   .topbar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; margin-bottom:22px; padding-bottom:16px; border-bottom:1px solid #d8e2ec; }
   .back-btn { display:inline-flex; gap:6px; font-size:.76rem; font-weight:600; color:#4a5a70; text-decoration:none; padding:5px 12px; border:1px solid #d0d8e4; border-radius:7px; background:#fff; }
   .back-btn:hover { background:#e8eef5; color:#1a2030; }

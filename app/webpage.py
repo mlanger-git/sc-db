@@ -12,7 +12,8 @@ PAGE = r'''<!DOCTYPE html>
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=Exo+2:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background:#f5f7fa; color:#1a2030; font-family:'Exo 2',sans-serif; padding:28px 28px 48px; max-width:1400px; }
+  html { font-size:115%; }   /* alle Schriftgrößen sind in rem: hier zentral skalieren, gleich wie im Frachtrechner */
+  body { background:#f5f7fa; color:#1a2030; font-family:'Exo 2',sans-serif; padding:28px 28px 48px; max-width:none; }
   .topbar { display:flex; align-items:center; gap:10px; margin-bottom:22px; padding-bottom:16px; border-bottom:1px solid #d8e2ec; }
   .back-btn { display:inline-flex; gap:6px; font-size:.76rem; font-weight:600; color:#4a5a70; text-decoration:none; padding:5px 12px; border:1px solid #d0d8e4; border-radius:7px; background:#fff; }
   .back-btn:hover { background:#e8eef5; color:#1a2030; }
@@ -26,9 +27,9 @@ PAGE = r'''<!DOCTYPE html>
   .count b { color:#1a2030; font-size:1rem; }
   .wrap { overflow-x:auto; background:#fff; border:1px solid #d0d8e4; border-radius:12px; box-shadow:0 1px 4px rgba(0,0,0,.05); }
   table { border-collapse:collapse; width:100%; font-size:.8rem; }
-  th { position:sticky; top:0; background:#1a2030; color:#fff; font-family:'Rajdhani',sans-serif; letter-spacing:.06em; text-transform:uppercase; font-size:.72rem; padding:9px 8px; text-align:left; cursor:pointer; white-space:normal; line-height:1.25; vertical-align:bottom; min-width:64px; max-width:96px; }
+  th { position:sticky; top:0; background:#1a2030; color:#fff; font-family:'Rajdhani',sans-serif; letter-spacing:.06em; text-transform:uppercase; font-size:.72rem; padding:9px 6px; text-align:left; cursor:pointer; white-space:normal; line-height:1.25; vertical-align:bottom; min-width:64px; max-width:96px; }
   th.sorted::after { content:' ▲'; } th.sorted.desc::after { content:' ▼'; }
-  td { padding:7px 10px; border-top:1px solid #edf1f6; vertical-align:top; }
+  td { padding:7px 7px; border-top:1px solid #edf1f6; vertical-align:top; }
   td.c { text-align:center; }
   table.hide-shops .shop { display:none; }
   td.n { text-align:right; font-variant-numeric:tabular-nums; white-space:nowrap; }
