@@ -89,6 +89,7 @@ PAGE = r'''<!DOCTYPE html>
       <label>Quantum-Geschwindigkeit <input type="number" id="oq" min="20" step="10" placeholder="aus Reisedaten" style="width:110px"> Mm/s</label>
       <label>Zuschlag je Flug (zusätzlich zur Spool-Zeit) <input type="number" id="ov" min="0" step="0.5" value="0.8" style="width:70px"> Min</label>
       <label>Dauer Sprungtunnel <input type="number" id="ot" min="0" step="0.5" value="5" style="width:70px"> Min</label>
+      <label>„Netto-Erlös“: gleichwertig bis <input type="number" id="ont" min="0" max="50" step="1" value="5" style="width:70px"> % unter dem besten Erlös (dann gewinnt die kürzere Route)</label>
       <label>„Kürzeste Zeit“: mindestens <input type="number" id="omr" min="0" max="100" step="5" value="90" style="width:70px"> % des möglichen Erlöses</label>
       <label>Treibstoff je Sprungtunnel <input type="number" id="of" min="0" max="100" step="1" value="5" style="width:70px"> % des Quantum-Tanks</label>
       <label>Zeit je Verkaufsstopp <input type="number" id="ow" min="0" step="1" value="5" style="width:70px"> Min</label>
@@ -223,7 +224,7 @@ function addRow(name='',scu=''){
 $('add').onclick=()=>{addRow();};
 $('clr').onclick=()=>{$('rows').innerHTML='';addRow();schedule();};
 $('os').addEventListener('change',schedule);
-['od','oi','oa','oc','om','oq','ov','ot','of','omr','ow','st','qm','qs','qd'].forEach(i=>$(i).addEventListener('input',schedule));
+['od','oi','oa','oc','om','oq','ov','ot','of','omr','ont','ow','st','qm','qs','qd'].forEach(i=>$(i).addEventListener('input',schedule));
 // Schiff gewechselt: im Modus „gewählter Drive“ zuerst dessen Standard-Drive vorwählen
 $('qs').addEventListener('input',()=>fillDrives());
 $('qm').addEventListener('input',()=>{if($('qm').value==='drive')fillDrives();});
@@ -234,7 +235,7 @@ const numIn=(id,def,min)=>{const v=parseFloat($(id).value);return isNaN(v)?def:M
 function getOpts(){const q=qdSel(),oc=$('oc').value.trim();
   return {sys:selSys(),demand:$('od').checked,illegal:$('oi').checked,age:+$('oa').value,start:$('st').value,q,
   cost:oc===''?q.fuel*FP:Math.max(0,+oc||0),
-  mode:$('om').value,speed:numIn('oq',q.speed,20),ovh:numIn('ov',0.8,0)+q.spool/60,tun:numIn('ot',5,0),tf:(q.tank||TKAVG||0)*numIn('of',5,0)/100,mr:Math.min(100,numIn('omr',90,0))/100,dwell:numIn('ow',5,0)};}
+  mode:$('om').value,speed:numIn('oq',q.speed,20),ovh:numIn('ov',0.8,0)+q.spool/60,tun:numIn('ot',5,0),tf:(q.tank||TKAVG||0)*numIn('of',5,0)/100,mr:Math.min(100,numIn('omr',90,0))/100,nt:Math.min(50,numIn('ont',5,0))/100,dwell:numIn('ow',5,0)};}
 function getNeed(){const need={};let bad=false;
   document.querySelectorAll('#rows .row').forEach(r=>{const n=r.querySelector('.cn'),s=r.querySelector('.cs');
     const nm=n.value.trim().toLowerCase(),q=parseFloat(s.value);
@@ -246,7 +247,7 @@ function getNeed(){const need={};let bad=false;
     need[c.id]=(need[c.id]||0)+q;});
   return {need,bad};}
 function save(){try{const o=getOpts();localStorage.setItem(LS,JSON.stringify({rows:[...document.querySelectorAll('#rows .row')].map(r=>[r.querySelector('.cn').value,r.querySelector('.cs').value]),
-  od:o.demand,oi:o.illegal,oa:$('oa').value,os:o.sys,st:o.start,oc:$('oc').value,om:$('om').value,oq:$('oq').value,ov:$('ov').value,ot:$('ot').value,op:$('of').value,omr:$('omr').value,ow:$('ow').value,qm:$('qm').value,qs:$('qs').value,qd:$('qd').value}));}catch(e){}}
+  od:o.demand,oi:o.illegal,oa:$('oa').value,os:o.sys,st:o.start,oc:$('oc').value,om:$('om').value,oq:$('oq').value,ov:$('ov').value,ot:$('ot').value,op:$('of').value,omr:$('omr').value,ont:$('ont').value,ow:$('ow').value,qm:$('qm').value,qs:$('qs').value,qd:$('qd').value}));}catch(e){}}
 function load(){try{let s=JSON.parse(localStorage.getItem(LS)||'null'),old=false;
   if(!s){s=JSON.parse(localStorage.getItem(LS_OLD)||'null');old=true;}   // alte Version: Waren, Systeme, Startpunkt übernehmen; Kosten und Geschwindigkeit gelten neu
   if(!s)return false;
@@ -259,6 +260,7 @@ function load(){try{let s=JSON.parse(localStorage.getItem(LS)||'null'),old=false
     if(s[k]!=null&&s[k]!=='')$(k).value=s[k];});
   if(!old&&s.op!=null&&s.op!=='')$('of').value=s.op;
   if(!old&&s.omr!=null&&s.omr!=='')$('omr').value=s.omr;
+  if(!old&&s.ont!=null&&s.ont!=='')$('ont').value=s.ont;
   const ss=Array.isArray(s.os)?s.os:(s.os?[s.os]:[]);
   if(ss.some(x=>SYS.includes(x)))document.querySelectorAll('#os input').forEach(i=>{i.checked=ss.includes(i.value);});
   fillStart(s.st);return true;}catch(e){return false;}}
@@ -275,9 +277,10 @@ function buildOffers(o,need){
     if(!o.illegal&&(t.nqa||CM[cid].il))continue;
     if(o.age&&now-mod>o.age*86400)continue;
     let cap=Infinity,est=false;
-    if(o.demand){if(st===7)continue;if(scu>0)cap=scu;else{est=true;if(avg>0)cap=avg;}}
+    if(o.demand){if(scu>0)cap=scu;else{est=true;if(avg>0)cap=avg;}}
+    const full=st===7;   // UEX: Lager voll, evtl. keine Nachfrage; Spieler können dort trotzdem noch verkaufen -> nur Hinweis
     const m=res[cid],cur=m.get(t.pi);
-    if(!cur||price>cur.price)m.set(t.pi,{tid,price,cap,est,mod});
+    if(!cur||price>cur.price)m.set(t.pi,{tid,price,cap,est,mod,full});
   }
   return res;
 }
@@ -340,6 +343,8 @@ function score(rev,rest,r,o){
   const net=rev-o.cost*r.d-r.ch*o.tf*FP,hrs=Math.max(r.t,1)/60;
   // Kürzeste Zeit: zählt nur, was mindestens den Mindest-Erlös (Anteil am Maximum) erreicht; darunter wird stark bestraft
   if(o.mode==='time'){const pen=o.mxRev>0?Math.max(0,o.mr-rev/o.mxRev):0;return -pen*1e12-r.t+rev*1e-9;}
+  // Netto-Erlös mit Toleranz: Routen bis nt unter dem besten Netto gelten als gleichwertig, dann gewinnt die kürzere
+  if(o.mode==='nettol'){const pen=o.netM>0?Math.max(0,(1-o.nt)*o.netM-net)/o.netM:0;return -pen*1e12-r.t+net*1e-9;}
   return o.mode==='net'?net:net/hrs;
 }
 function candidates(need,off,o,st){
@@ -352,7 +357,7 @@ function candidates(need,off,o,st){
   }
   const single=[...all].map(pk=>[pk,evalSet([pk],need,off,false)]);
   single.map(([pk,r])=>[pk,r-(st&&o.cost>0?o.cost*st.d[pk]:0)]).sort((a,b)=>b[1]-a[1]).slice(0,30).forEach(([pk])=>set.add(pk));
-  if(o.mode!=='net'){
+  if(o.mode!=='net'){   // auch bei 'nettol': schnelle und gut bezahlte Orte zusätzlich prüfen
     single.map(([pk,r])=>[pk,(r-(st?o.cost*st.d[pk]:0))/((st?st.t[pk]:0)+M.dwell+1)]).sort((a,b)=>b[1]-a[1]).slice(0,12).forEach(([pk])=>set.add(pk));
     if(st)[...all].sort((a,b)=>st.t[a]-st.t[b]).slice(0,10).forEach(pk=>set.add(pk));
   }
@@ -414,7 +419,7 @@ function stopsHtml(plan,order,legs,o){
     const leg=legTxt(legs&&legs[i],i,o);
     return `<div class="stop"><div class="sname">${order&&order.length?`${i+1}. `:''}${esc(pl.pl)} <span class="sloc">· ${esc(pl.lc)} · Terminal: ${esc(terms)}${leg}</span></div>`+
       lines.map(l=>`<div class="line"><span>${esc(CM[l.cid].n)}: ${nf(l.take,l.take%1?1:0)} SCU × ${nf(l.o.price)} aUEC`+
-        `${l.o.est?' <span class="note">· Nachfrage geschätzt</span>':''}${(Date.now()/1000-l.o.mod)>7*86400?` <span class="note">· Preis von ${ageTxt(l.o.mod)}</span>`:''}</span>`+
+        `${l.o.est?' <span class="note">· Nachfrage geschätzt</span>':''}${l.o.full?' <span class="note">· laut UEX Lager voll, evtl. keine Nachfrage</span>':''}${(Date.now()/1000-l.o.mod)>7*86400?` <span class="note">· Preis von ${ageTxt(l.o.mod)}</span>`:''}</span>`+
         `<span class="a">${nf(l.take*l.o.price)} aUEC</span></div>`).join('')+
       `<div class="line" style="font-weight:600"><span>Summe an diesem Stopp</span><span class="a">${nf(sum(lines))} aUEC</span></div></div>`;
   }).join('');
@@ -452,6 +457,9 @@ function compute(){
   const ooN={...oo,mode:'net'};
   const best3=(oc,ov)=>{const {cands,all}=candidates(need2,off,oc,st);return [1,2,3].map(k=>k>all.length&&k>1?null:bestExact(k,cands,need2,off,oc,st,s0));};
   const exN=best3(ooN);
+  // Netto-Erlös: erst bester Netto-Wert M, dann gilt alles ab (1 - Toleranz) x M als gleichwertig und die kürzeste Route gewinnt
+  const useTol=oo.mode==='net'&&oo.nt>0&&DM.some(v=>v>0);
+  if(useTol){const M0=Math.max(...exN.filter(Boolean).map(x=>x.v));oo={...oo,mode:'nettol',netM:M0};}
   const exM=oo.mode==='net'?null:best3(oo);
   const cards=[],seen=new Set();
   function addCard(pick){

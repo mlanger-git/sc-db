@@ -25,7 +25,10 @@ Kachel für `index.php`: `kachel_frachtrechner.html`.
 
 ### Entfernungen, Reisezeit und Startpunkt
 Die Seite fragt einen Startpunkt (Himmelskörper oder Ort), Streckenkosten (aUEC je Gigameter) und ein Optimierungsziel ab:
-Gewinn je Stunde (Standard), Netto-Erlös oder kürzeste Zeit. Sie zeigt Alternativen mit 1 bis 3 Stopps und zusätzlich den
+Gewinn je Stunde (Standard), Netto-Erlös oder kürzeste Zeit. Beim Netto-Erlös gelten Routen bis 5 % unter dem besten Erlös
+(einstellbar unter „Zeit-Annahmen“) als gleichwertig, dann gewinnt die kürzere, damit keine langen Umwege für ein paar tausend aUEC
+empfohlen werden. Terminals, die UEX mit voller Lagerstufe (7) meldet, werden nicht ausgeschlossen, sondern mit dem Hinweis
+„laut UEX Lager voll, evtl. keine Nachfrage“ angezeigt, weil UEX dem Spiel oft hinterherhinkt. Sie zeigt Alternativen mit 1 bis 3 Stopps und zusätzlich den
 besten Plan nach dem gewählten Ziel, jeweils mit Reihenfolge, Teilstrecken (Gm) und geschätzter Reisezeit.
 Die Reihenfolge der Stopps hat erst die wenigsten Systemwechsel (Stopps im selben System werden zusammen angefahren),
 dann die kürzeste Zeit.
