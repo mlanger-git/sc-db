@@ -31,6 +31,14 @@ neu, der Container selbst läuft durch. Dadurch entfällt die nächtliche Aufgab
 - Abschalten: Umgebungsvariable `SELFUPDATE=0`. Anderes Repository/Branch: `SELFUPDATE_REPO`, `SELFUPDATE_BRANCH`.
 - Im Protokoll steht beim Start `Code-Stand: <Commit>` (oder `image`).
 
+## Überwachung
+- **Warnleiste:** Jede erzeugte Seite enthält (über `app/stale.py`) ein kleines Skript, das oben eine rote Warnung zeigt, wenn die Seite
+  nicht mehr neu geschrieben wird (Frachtrechner und Warenwerte: älter als 12 Stunden, Schiffspreise: älter als 36 Stunden).
+- **DSM-Aufgabe:** `check_updater.sh` im Aufgabenplaner als „Benutzerdefiniertes Skript“ (Benutzer root) alle 6 Stunden ausführen,
+  unter „Aufgabeneinstellungen“ Benachrichtigung bei abnormaler Beendigung aktivieren. Das Skript schlägt fehl, wenn
+  `SC_Frachtrechner.html` fehlt oder älter als 7 Stunden ist.
+- Fehler im Detail: Container Manager → sc-updater → Protokoll.
+
 ## Frachtrechner
 `app/uex.py` holt Terminals, Waren und Verkaufspreise von UEX Corp (Stanton, Pyro, Nyx; kein Token nötig) in die
 Tabellen `uex_*`, `app/tradepage.py` erzeugt daraus `SC_Frachtrechner.html`. Die Preise werden alle

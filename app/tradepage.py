@@ -583,6 +583,8 @@ def build(con, target):
             .replace("__QD__", js(qd)).replace("__SHIPS__", js(ships)).replace("__QFP__", js(qfp)).replace("__QFTXT__", qftxt)
             .replace("__UEXSTAND__", stand).replace("__DTXT__", dtxt)
             .replace("__STAND__", dt.datetime.now().strftime("%d.%m.%Y %H:%M")))
+    import stale
+    html = stale.inject(html, 12)
     os.makedirs(os.path.dirname(target), exist_ok=True)
     tmp = target + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:

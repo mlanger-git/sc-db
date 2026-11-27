@@ -193,6 +193,8 @@ def build(con, target):
             .replace("__KURS__", str(fx[1]) if fx else "?")
             .replace("__KURSTAG__", str(fx[0]) if fx else "?")
             .replace("__MWST__", f"{float(vat[0]) * 100:.0f} %" if vat else "19 %"))
+    import stale
+    html = stale.inject(html, 36)
     os.makedirs(os.path.dirname(target), exist_ok=True)
     tmp = target + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:

@@ -280,6 +280,8 @@ def build(con, target):
 
     html = (PAGE.replace("__TERMINALS__", js(terms)).replace("__COMMODITIES__", js(coms)).replace("__PRICES__", js(prices))
             .replace("__UEXSTAND__", stand).replace("__STAND__", dt.datetime.now().strftime("%d.%m.%Y %H:%M")))
+    import stale
+    html = stale.inject(html, 12)
     os.makedirs(os.path.dirname(target), exist_ok=True)
     tmp = target + ".tmp"
     with open(tmp, "w", encoding="utf-8") as f:
