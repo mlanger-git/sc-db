@@ -17,6 +17,20 @@ Ein Container (`sc-updater`) holt täglich Daten, pflegt die SQLite-Datenbank un
 Neue Themen (Waffen, Missionen …) = neue Tabellen in `app/schema.sql` plus eine weitere `update_*`-Funktion
 und ggf. eine weitere Seite in `app/webpage.py`. Die Datenbank bleibt dieselbe Datei `data/starcitizen.db`.
 
+## Selbstaktualisierung (ohne Container-Neustart)
+Der Container startet über `app/start.py`. Das Programm fragt bei jedem Durchlauf (alle 3 Stunden) bei GitHub nach dem neuesten
+Commit von `main`. Gibt es einen neuen, lädt `app/selfupdate.py` den Ordner `app/`, prüft ihn (Pflichtdateien, Syntax) und legt ihn
+nach `data/app_live/code`. Danach beendet sich nur das Python-Programm (Exit-Code 75), `start.py` startet es mit dem neuen Code
+neu, der Container selbst läuft durch. Dadurch entfällt die nächtliche Aufgabe im Aufgabenplaner und damit die DSM-Meldung
+„Dienst unerwartet beendet“.
+- Stürzt nachgeladener Code in den ersten 3 Minuten ab, wird er in `data/app_live/BAD` vermerkt und der im Image eingebaute Code
+  weiterverwendet; der defekte Stand wird nicht erneut geladen, erst ein neuer Commit.
+- Wird das Image neu gebaut, wird nachgeladener Code verworfen (der Image-Code ist dann der aktuelle).
+- Ändern sich `Dockerfile` oder `requirements.txt`, ist ein Image-Neubau nötig (einmal `sc-db aktualisieren` ausführen);
+  das steht im Protokoll („Image-Neubau nötig“) und wird nicht automatisch eingespielt.
+- Abschalten: Umgebungsvariable `SELFUPDATE=0`. Anderes Repository/Branch: `SELFUPDATE_REPO`, `SELFUPDATE_BRANCH`.
+- Im Protokoll steht beim Start `Code-Stand: <Commit>` (oder `image`).
+
 ## Frachtrechner
 `app/uex.py` holt Terminals, Waren und Verkaufspreise von UEX Corp (Stanton, Pyro, Nyx; kein Token nötig) in die
 Tabellen `uex_*`, `app/tradepage.py` erzeugt daraus `SC_Frachtrechner.html`. Die Preise werden alle

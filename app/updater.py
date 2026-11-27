@@ -569,7 +569,14 @@ def main():
         status()
     elif cmd == "loop":
         last_full = last_trade = 0.0
+        log(f"Code-Stand: {os.environ.get('SC_CODE_VERSION', 'unbekannt')[:7]}")
         while True:
+            try:  # neuen Code aus GitHub holen; bei Erfolg Programm beenden, start.py startet es neu
+                import selfupdate
+                if selfupdate.check(log):
+                    sys.exit(selfupdate.EXIT_RESTART)
+            except Exception as e:  # noqa: BLE001  (SystemExit wird nicht gefangen)
+                log(f"selfupdate: Fehler {e}")
             now = time.time()
             if now - last_full >= INTERVAL_HOURS * 3600 - 60:
                 run_once()
