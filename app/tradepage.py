@@ -41,7 +41,10 @@ PAGE = r'''<!DOCTYPE html>
   .meta b { color:#1c2733; font-size:.84rem; }
   .stop { border-top:1px solid #edf1f6; padding:9px 0 3px; }
   .sname { font-weight:600; } .sloc { font-size:.74rem; color:#6b7a90; }
-  .line { display:flex; justify-content:space-between; gap:14px; font-size:.84rem; padding:2px 0 2px 12px; flex-wrap:wrap; }
+  .line { display:flex; align-items:baseline; gap:6px; font-size:.84rem; padding:2px 4px 2px 12px; border-radius:4px; }
+  .line:hover { background:#eef3fa; }
+  .line > span:first-child { flex:0 1 auto; min-width:0; }
+  .line .dots { flex:1 1 24px; min-width:24px; border-bottom:2px dotted #9fb0c6; position:relative; top:-.28em; }
   .line .a { font-variant-numeric:tabular-nums; white-space:nowrap; }
   .note { font-size:.7rem; color:#b45309; }
   .warn { background:#fef3c7; border:1px solid #f0d58a; color:#7a4b00; border-radius:8px; padding:7px 12px; font-size:.8rem; margin-bottom:10px; }
@@ -420,8 +423,8 @@ function stopsHtml(plan,order,legs,o){
     return `<div class="stop"><div class="sname">${order&&order.length?`${i+1}. `:''}${esc(pl.pl)} <span class="sloc">· ${esc(pl.lc)} · Terminal: ${esc(terms)}${leg}</span></div>`+
       lines.map(l=>`<div class="line"><span>${esc(CM[l.cid].n)}: ${nf(l.take,l.take%1?1:0)} SCU × ${nf(l.o.price)} aUEC`+
         `${l.o.est?' <span class="note">· Nachfrage geschätzt</span>':''}${l.o.full?' <span class="note">· laut UEX Lager voll, evtl. keine Nachfrage</span>':''}${(Date.now()/1000-l.o.mod)>7*86400?` <span class="note">· Preis von ${ageTxt(l.o.mod)}</span>`:''}</span>`+
-        `<span class="a">${nf(l.take*l.o.price)} aUEC</span></div>`).join('')+
-      `<div class="line" style="font-weight:600"><span>Summe an diesem Stopp</span><span class="a">${nf(sum(lines))} aUEC</span></div></div>`;
+        `<i class="dots"></i><span class="a">${nf(l.take*l.o.price)} aUEC</span></div>`).join('')+
+      `<div class="line" style="font-weight:600"><span>Summe an diesem Stopp</span><i class="dots"></i><span class="a">${nf(sum(lines))} aUEC</span></div></div>`;
   }).join('');
 }
 // Reichweite: ein einzelner Quantum-Flug darf nicht weiter sein, als der Tank hergibt; die ganze Route evtl. mit Tankstopp
