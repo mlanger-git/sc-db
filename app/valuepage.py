@@ -78,7 +78,7 @@ PAGE = r'''<!DOCTYPE html>
 <body>
 <div class="topbar"><a href="./" class="back-btn">← Star Citizen</a><a href="SC_Frachtrechner.html" class="back-btn">Frachtrechner</a><a href="SC_Schiffspreise.html" class="back-btn">Schiffspreise</a></div>
 <h1>SC Warenwerte</h1>
-<div class="subtitle">Was ist eine Ware wert? · Verkaufspreise je SCU · Stand Preisdaten __UEXSTAND__</div>
+<div class="subtitle">Was ist eine Ware wert? · Verkaufspreise je SCU · Neueste UEX-Preismeldung __UEXSTAND__ · Seite zuletzt erzeugt __STAND__</div>
 
 <div class="panel">
   <div class="opts" style="margin-bottom:12px">
